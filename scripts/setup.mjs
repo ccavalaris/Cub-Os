@@ -65,8 +65,39 @@ try {
   );
 }
 
+// ---- demo password ---------------------------------------------------------
+// A memorable shared password is fine on a laptop. On a hosted database the URL
+// can be opened by anyone who has the link, and the seeded addresses are easy to
+// guess, so seed a strong one instead unless the operator chose their own.
+const isLocal = /@(localhost|127\.0\.0\.1|\[::1\])[:/]/.test(dbUrl) || dbUrl.includes("@/");
+let demoPassword = process.env.SEED_DEMO_PASSWORD ?? "";
+let generatedPassword = false;
+
+if (!demoPassword && !isLocal) {
+  demoPassword = randomBytes(12).toString("base64url");
+  generatedPassword = true;
+}
+
 console.log("\nSeeding the demo club…");
 run("npx prisma generate");
-run("npx tsx prisma/seed.ts");
+execSync("npx tsx prisma/seed.ts", {
+  cwd: root,
+  stdio: "inherit",
+  env: demoPassword ? { ...process.env, SEED_DEMO_PASSWORD: demoPassword } : process.env,
+});
+
+if (generatedPassword) {
+  console.log(
+    "\n" +
+      "  ────────────────────────────────────────────────────────────\n" +
+      "  This is not a local database, so the staff logins were seeded\n" +
+      "  with a generated password rather than the shared demo one:\n\n" +
+      `      ${demoPassword}\n\n` +
+      "  Write it down — it is not stored anywhere and is not shown\n" +
+      "  again. Set SEED_DEMO_PASSWORD yourself to choose your own.\n" +
+      "  Also set SHOW_DEMO_LOGINS=false wherever the app is hosted.\n" +
+      "  ────────────────────────────────────────────────────────────\n",
+  );
+}
 
 console.log("\n✓ Ready. Start it with:  npm run dev\n");
