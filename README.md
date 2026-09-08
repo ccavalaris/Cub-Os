@@ -48,11 +48,16 @@ Prerequisites: Node 20+, and a Postgres database you can reach.
 
 ```bash
 npm install
-cp .env.example .env          # then fill in DATABASE_URL and AUTH_SECRET
-npx prisma migrate deploy     # or `npx prisma migrate dev` when changing schema
-npm run seed                  # demo club, staff logins, today's sheets
+cp .env.example .env          # then point DATABASE_URL at your Postgres
+npm run setup                 # migrations + AUTH_SECRET + demo data
 npm run dev
 ```
+
+`npm run setup` is idempotent — run it again any time to reset the demo to a
+clean sheet.
+
+**To get this in front of an actual club pro** — a link to send, or a laptop to
+open — see [DEPLOY.md](DEPLOY.md).
 
 Open http://localhost:3000. The login screen lists the seeded staff accounts;
 they all use the password printed by the seed (`clubos2026` unless you set
@@ -81,22 +86,13 @@ run it again any time a demo needs a clean sheet.
 
 ## Deploying
 
-### Database — Supabase
+Step-by-step, with the Supabase pooler settings that matter:
+**[DEPLOY.md](DEPLOY.md)**.
 
-1. Create a project; copy **Settings → Database → Connection string → URI**.
-2. Set `DATABASE_URL` to the **pooled** connection (port 6543) with
-   `?pgbouncer=true&connection_limit=1` appended.
-3. Run migrations against the **direct** connection (port 5432) once:
-   `DATABASE_URL="<direct-url>" npx prisma migrate deploy`
-4. Seed the same way if you want demo data in the hosted database.
-
-### App — Vercel
-
-1. Import the repo; the framework preset is Next.js and needs no changes.
-2. Add `DATABASE_URL` and `AUTH_SECRET` as environment variables.
-3. Deploy. `prisma generate` runs automatically via the `postinstall` script.
-
-Set `SHOW_DEMO_LOGINS=false` on any deployment a member could reach.
+Short version: Supabase for Postgres, Vercel for the app, `DATABASE_URL` on the
+pooled connection with `?pgbouncer=true&connection_limit=1`, migrations run
+against the direct connection, and `SHOW_DEMO_LOGINS=false` on anything a member
+could reach.
 
 ---
 
@@ -183,6 +179,7 @@ reference/          the original prototypes — the UX spec
 
 | Command | Does |
 |---------|------|
+| `npm run setup` | Migrations, `AUTH_SECRET`, and demo data — from a cold clone |
 | `npm run dev` | Development server |
 | `npm run build` | Production build |
 | `npm run seed` | Reset and reseed the demo club |

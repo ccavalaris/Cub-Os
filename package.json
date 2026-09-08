@@ -9,7 +9,8 @@
     "lint": "eslint",
     "seed": "tsx prisma/seed.ts",
     "typecheck": "tsc --noEmit",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "setup": "node scripts/setup.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

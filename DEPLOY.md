@@ -1,0 +1,121 @@
+# Getting Club OS in front of a club pro
+
+Two ways, depending on whether you want a link to send or a laptop to open.
+Both start from a clone of this branch.
+
+---
+
+## A. A link you can send — Supabase + Vercel, about 10 minutes
+
+Both free tiers are enough for a pilot. You need a GitHub account with this
+repo, and nothing installed locally.
+
+### 1. Database — Supabase
+
+1. https://supabase.com → **New project**. Pick a region near the club.
+   Save the database password it gives you; you cannot see it again.
+2. **Project Settings → Database → Connection string**. You need two of them:
+   - **Transaction pooler** (port `6543`) — this is what the app runs on.
+   - **Direct connection** (port `5432`) — this is what migrations run on.
+3. Note them down as:
+
+   ```
+   POOLED = postgresql://postgres.xxxx:PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
+   DIRECT = postgresql://postgres.xxxx:PASSWORD@aws-0-REGION.pooler.supabase.com:5432/postgres
+   ```
+
+   The `?pgbouncer=true&connection_limit=1` on the pooled URL is not optional —
+   without it Prisma will exhaust the pooler under any real use.
+
+### 2. Create the schema and demo data — once, from your machine
+
+```bash
+git clone -b claude/mvp-club-pros-9o9wuj https://github.com/ccavalaris/Cub-Os.git
+cd Cub-Os
+npm install
+cp .env.example .env
+# put the DIRECT url in .env as DATABASE_URL for this step
+npm run setup
+```
+
+`npm run setup` applies the migrations, generates an `AUTH_SECRET`, and seeds
+the demo club with staff logins, today's tee sheet and lesson book, a field of
+16 teams, and three events.
+
+### 3. Host — Vercel
+
+1. https://vercel.com → **Add New → Project** → import this repo.
+   Pick the `claude/mvp-club-pros-9o9wuj` branch.
+2. Leave the framework preset (Next.js) alone. Add three environment variables:
+
+   | Name | Value |
+   |------|-------|
+   | `DATABASE_URL` | the **POOLED** url from step 1 |
+   | `AUTH_SECRET` | copy the one `npm run setup` wrote into your `.env` |
+   | `SHOW_DEMO_LOGINS` | `false` |
+
+3. **Deploy.**
+
+That is the link. Sign in with `gm@exmoor.test` / `clubos2026`.
+
+> Set `SHOW_DEMO_LOGINS=false` on anything a member could reach — otherwise the
+> login page lists the demo accounts and their shared password.
+
+### Changing the demo password
+
+Set `SEED_DEMO_PASSWORD` before running `npm run setup` and every seeded login
+uses it instead of `clubos2026`.
+
+---
+
+## B. A laptop you open at the club — no accounts needed
+
+Good when the clubhouse wifi is unreliable and you would rather not depend on
+it. Needs Node 20+ and a Postgres you can reach.
+
+```bash
+git clone -b claude/mvp-club-pros-9o9wuj https://github.com/ccavalaris/Cub-Os.git
+cd Cub-Os
+npm install
+
+# point DATABASE_URL at any Postgres, e.g. a local one:
+#   createdb clubos
+#   DATABASE_URL="postgresql://localhost:5432/clubos?schema=public"
+cp .env.example .env && $EDITOR .env
+
+npm run setup
+npm run build && npm start      # http://localhost:3000
+```
+
+Use `npm start` rather than `npm run dev` for a demo — the production build is
+noticeably quicker on a laptop.
+
+Run `npm run setup` again any time to reset the demo to a clean sheet. It tears
+the demo club down and rebuilds it, so a practice run before the meeting costs
+nothing.
+
+---
+
+## Before you demo
+
+- **Reset the data.** `npm run setup` (or re-run the seed against the hosted
+  database) so the tee sheet, lesson book and leaderboard look like a fresh
+  morning.
+- **Know the money story.** The strongest thirty seconds: ring a sleeve of
+  Pro V1s to a member in Pro Shop, open Member Directory, show the charge
+  already on their account with the transaction behind it. Then settle a
+  tournament payout and show the credit land on the same ledger.
+- **Be straight about Field Comms.** It records and timestamps what the field
+  was told, and says on screen that nothing was texted. Connecting it to phones
+  needs an SMS account and a number members recognise — a setup step, not a
+  build step.
+- **Roles are real.** Sign in as `shop@exmoor.test` to show that pro shop staff
+  simply do not have the tee sheet or tournament tabs, and that typing the URL
+  does not get them in either.
+
+## What is not wired up
+
+No SMS sending, no GHIN handicap sync, no payment processor. Charges and payout
+credits post to the internal ledger only — no money moves. None of this is
+mocked in the UI; the one place a club pro might expect a live integration
+(Field Comms) says plainly that it is not connected.
