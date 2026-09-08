@@ -1,0 +1,366 @@
+// Club OS — data model
+//
+// Design notes:
+//  - Multi-tenant by construction. Every business row hangs off a Club. No club
+//    name is ever hardcoded in logic; "Exmoor" lives only in seed data.
+//  - Money is stored as INTEGER CENTS everywhere (`*Cents` fields). Never floats.
+//    The prototype tracked a running `mtdCharges` number on the member; here a
+//    member's balance is derived by summing the MemberCharge ledger, so the
+//    books can always be reconciled against the transactions that produced them.
+//  - Stock lives in one Product table discriminated by StockLocation, so the pro
+//    shop and the halfway house share a single POS engine instead of two.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------- tenancy
+
+model Club {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  // Branding shown in the sidebar crest — the prototype hardcoded these.
+  crest     String   @default("CO")
+  markLine  String   @default("Club OS")
+  footLine  String   @default("")
+  timezone  String   @default("America/Chicago")
+  createdAt DateTime @default(now())
+
+  users       User[]
+  members     Member[]
+  caddies     Caddie[]
+  products    Product[]
+  sales       Sale[]
+  holes       Hole[]
+  maintLogs   MaintLogEntry[]
+  teeSlots    TeeSlot[]
+  lessons     Lesson[]
+  charges     MemberCharge[]
+  instructors Instructor[]
+  courseDays  CourseDay[]
+}
+
+enum Role {
+  GM
+  HEAD_PRO
+  PRO_SHOP
+  CADDIE_MASTER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  clubId       String
+  club         Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  email        String
+  name         String
+  passwordHash String
+  role         Role
+  createdAt    DateTime @default(now())
+
+  // Scoped to the club so two clubs can each have their own pro@ address.
+  @@unique([clubId, email])
+  @@index([email])
+}
+
+// ---------------------------------------------------------------- members
+
+enum MemberStatus {
+  ACTIVE
+  ON_LEAVE
+  RESIGNED
+}
+
+enum DuesStatus {
+  CURRENT
+  GRACE_PERIOD
+  PAST_DUE
+}
+
+model Member {
+  id             String       @id @default(cuid())
+  clubId         String
+  club           Club         @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  household      String // "Whitfield, A. & M." — the billing unit
+  membershipType String // Full Golf, Legacy, House Social, ...
+  familySize     Int          @default(1)
+  status         MemberStatus @default(ACTIVE)
+  dues           DuesStatus   @default(CURRENT)
+  handicap       String? // manual entry — no GHIN sync in this build
+  email          String?
+  phone          String?
+  lastVisit      DateTime?
+  createdAt      DateTime     @default(now())
+
+  charges  MemberCharge[]
+  teeSlots TeeSlot[]
+  lessons  Lesson[]
+  sales    Sale[]
+
+  @@index([clubId, household])
+}
+
+enum ChargeSource {
+  PRO_SHOP
+  HALFWAY_HOUSE
+  LESSON
+  MANUAL
+}
+
+/// The single ledger every module posts to. A member's month-to-date balance is
+/// SUM(amountCents) over the current month — never a stored counter.
+model MemberCharge {
+  id          String       @id @default(cuid())
+  clubId      String
+  club        Club         @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  memberId    String
+  member      Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  source      ChargeSource
+  description String
+  amountCents Int
+  postedAt    DateTime     @default(now())
+  postedById  String?
+
+  saleId   String? @unique
+  sale     Sale?   @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  lessonId String? @unique
+  lesson   Lesson? @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+
+  @@index([clubId, memberId, postedAt])
+}
+
+// ---------------------------------------------------------------- tee sheet
+
+enum SlotStatus {
+  OPEN
+  BOOKED
+  BLOCKED
+}
+
+enum PlayMode {
+  CART
+  WALKING
+}
+
+/// One row per tee time per day. Rows are generated on demand for a date and
+/// then persist, so paging back and forth shows real bookings rather than the
+/// prototype's synthetic preview.
+model TeeSlot {
+  id        String     @id @default(cuid())
+  clubId    String
+  club      Club       @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  date      DateTime   @db.Date
+  teeTime   String // "7:00am" — display form, ordered by sortKey
+  sortKey   Int // minutes from midnight
+  status    SlotStatus @default(OPEN)
+  groupName String     @default("")
+  memberId  String?
+  member    Member?    @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  mode      PlayMode?
+  caddieId  String?
+  caddie    Caddie?    @relation(fields: [caddieId], references: [id], onDelete: SetNull)
+  note      String     @default("")
+  updatedAt DateTime   @updatedAt
+
+  @@unique([clubId, date, sortKey])
+  @@index([clubId, date])
+}
+
+// ---------------------------------------------------------------- caddies
+
+enum CaddieStatus {
+  AVAILABLE
+  ON_LOOP
+  OFF_TODAY
+}
+
+enum CaddieTier {
+  LOOPER
+  STANDARD
+  TOURNAMENT
+}
+
+model Caddie {
+  id        String       @id @default(cuid())
+  clubId    String
+  club      Club         @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  name      String
+  tier      CaddieTier   @default(STANDARD)
+  status    CaddieStatus @default(AVAILABLE)
+  phone     String?
+  createdAt DateTime     @default(now())
+
+  teeSlots TeeSlot[]
+
+  @@index([clubId, status])
+}
+
+// ---------------------------------------------------------------- inventory + POS
+
+enum StockLocation {
+  PRO_SHOP
+  HALFWAY_HOUSE
+}
+
+model Product {
+  id           String        @id @default(cuid())
+  clubId       String
+  club         Club          @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  location     StockLocation
+  name         String
+  category     String
+  stock        Int           @default(0)
+  reorderPoint Int           @default(0)
+  priceCents   Int
+  active       Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+
+  lines SaleLine[]
+
+  @@index([clubId, location])
+}
+
+enum TenderType {
+  MEMBER_ACCOUNT
+  CASH
+}
+
+model Sale {
+  id         String        @id @default(cuid())
+  clubId     String
+  club       Club          @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  location   StockLocation
+  tender     TenderType
+  memberId   String?
+  member     Member?       @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  totalCents Int
+  soldById   String?
+  soldAt     DateTime      @default(now())
+
+  lines  SaleLine[]
+  charge MemberCharge?
+
+  @@index([clubId, location, soldAt])
+}
+
+model SaleLine {
+  id             String  @id @default(cuid())
+  saleId         String
+  sale           Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId      String
+  product        Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity       Int
+  unitPriceCents Int // captured at sale time — later price changes don't rewrite history
+  lineTotalCents Int
+}
+
+// ---------------------------------------------------------------- lesson book
+
+model Instructor {
+  id        String   @id @default(cuid())
+  clubId    String
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  name      String
+  title     String   @default("Instructor")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  lessons Lesson[]
+
+  @@index([clubId, active])
+}
+
+enum LessonStatus {
+  OPEN
+  BOOKED
+  BLOCKED
+}
+
+model Lesson {
+  id           String       @id @default(cuid())
+  clubId       String
+  club         Club         @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  date         DateTime     @db.Date
+  startTime    String // "8:00am"
+  sortKey      Int
+  instructorId String
+  instructor   Instructor   @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  status       LessonStatus @default(OPEN)
+  memberId     String?
+  member       Member?      @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  guestName    String       @default("") // non-member students
+  lessonType   String       @default("")
+  minutes      Int          @default(0)
+  rateCents    Int          @default(0)
+  charged      Boolean      @default(false)
+  updatedAt    DateTime     @updatedAt
+
+  charge MemberCharge?
+
+  @@unique([clubId, date, instructorId, sortKey])
+  @@index([clubId, date])
+}
+
+// ---------------------------------------------------------------- course
+
+enum HoleStatus {
+  OPEN
+  CART_PATH_ONLY
+}
+
+enum PinPosition {
+  A // front
+  B // middle
+  C // back
+}
+
+model Hole {
+  id     String      @id @default(cuid())
+  clubId String
+  club   Club        @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  number Int
+  par    Int
+  yards  Int
+  status HoleStatus  @default(OPEN)
+  pin    PinPosition @default(B)
+  note   String      @default("")
+
+  @@unique([clubId, number])
+}
+
+enum CourseStatus {
+  OPEN
+  RESTRICTED
+  CLOSED
+}
+
+/// Course-wide status for one calendar day. Drives the status pill in the top
+/// bar on every screen.
+model CourseDay {
+  id        String       @id @default(cuid())
+  clubId    String
+  club      Club         @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  date      DateTime     @db.Date
+  status    CourseStatus @default(OPEN)
+  note      String       @default("")
+  updatedAt DateTime     @updatedAt
+
+  @@unique([clubId, date])
+}
+
+model MaintLogEntry {
+  id        String   @id @default(cuid())
+  clubId    String
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  loggedAt  DateTime @default(now())
+  label     String // "6:10a" — free-form so the crew can log "Mon" too
+  text      String
+  createdAt DateTime @default(now())
+
+  @@index([clubId, loggedAt])
+}
