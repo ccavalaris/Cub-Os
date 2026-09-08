@@ -8,7 +8,9 @@ export type ModuleId =
   | "caddie"
   | "shop"
   | "halfway"
-  | "members";
+  | "members"
+  | "events"
+  | "tournament";
 
 export type NavTab = {
   id: ModuleId;
@@ -17,11 +19,7 @@ export type NavTab = {
   href: string;
 };
 
-/**
- * Modules shipped in this pilot. Event Logistics and Tournament Ops exist in the
- * prototype but are deliberately not here — see README. A tab that half works in
- * front of a GM is worse than a tab that isn't there.
- */
+/** Modules shipped in this pilot. */
 export const TABS: NavTab[] = [
   { id: "overview", num: "00", label: "Overview", href: "/" },
   { id: "tee", num: "01", label: "Tee Sheet", href: "/tee" },
@@ -31,14 +29,19 @@ export const TABS: NavTab[] = [
   { id: "shop", num: "05", label: "Pro Shop Inventory", href: "/shop" },
   { id: "halfway", num: "06", label: "Halfway House", href: "/halfway" },
   { id: "members", num: "07", label: "Member Directory", href: "/members" },
+  { id: "events", num: "08", label: "Event Logistics", href: "/events" },
+  { id: "tournament", num: "09", label: "Tournament Ops", href: "/tournament" },
 ];
 
 /** Carried over from the prototype's ROLES map. */
 export const ROLE_MODULES: Record<Role, ModuleId[]> = {
-  GM: ["overview", "tee", "lessons", "course", "caddie", "shop", "halfway", "members"],
+  GM: [
+    "overview", "tee", "lessons", "course", "caddie",
+    "shop", "halfway", "members", "events", "tournament",
+  ],
   PRO_SHOP: ["overview", "lessons", "shop", "halfway", "members"],
   CADDIE_MASTER: ["overview", "tee", "caddie", "course"],
-  HEAD_PRO: ["overview", "tee", "lessons", "course"],
+  HEAD_PRO: ["overview", "tee", "lessons", "course", "events", "tournament"],
 };
 
 export const ROLE_LABELS: Record<Role, string> = {

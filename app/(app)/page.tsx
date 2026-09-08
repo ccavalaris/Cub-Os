@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { canAccess, type ModuleId } from "@/lib/roles";
 import { dayKeyToDbDate, todayKey, longDayLabel } from "@/lib/dates";
 import { formatCentsShort } from "@/lib/money";
+import { needsAttention, daysOutLabel } from "@/lib/events";
 import PageShell from "@/components/page-shell";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,7 @@ export default async function OverviewPage() {
     courseDay,
     proShopToday,
     halfwayToday,
+    upcomingEvents,
   ] = await Promise.all([
     prisma.teeSlot.findMany({
       where: { clubId, date: today },
@@ -48,6 +50,11 @@ export default async function OverviewPage() {
       _sum: { totalCents: true },
       _count: true,
     }),
+    prisma.event.findMany({
+      where: { clubId, date: { gte: today } },
+      orderBy: { date: "asc" },
+      include: { tasks: { select: { done: true } } },
+    }),
   ]);
 
   const roundsToday = slots.filter((s) => s.status === "BOOKED").length;
@@ -65,6 +72,10 @@ export default async function OverviewPage() {
   const uncharged = lessonsBooked.filter((l) => !l.charged && l.memberId).length;
   const salesTotal = (proShopToday._sum.totalCents ?? 0) + (halfwayToday._sum.totalCents ?? 0);
   const salesCount = proShopToday._count + halfwayToday._count;
+  const eventsNeedingAttention = upcomingEvents.filter((e) =>
+    needsAttention(e.date, e.tasks.filter((t) => !t.done).length),
+  );
+  const nextEvent = upcomingEvents[0] ?? null;
 
   // Each tile belongs to a module; a role only sees tiles for tabs it can open.
   const pool: Array<{ tab: ModuleId; label: string; value: string; sub: string }> = [
@@ -116,6 +127,14 @@ export default async function OverviewPage() {
       value: String(activeMembers),
       sub: `of ${members.length} households on file`,
     },
+    {
+      tab: "events",
+      label: "Events Needing Attention",
+      value: String(eventsNeedingAttention.length),
+      sub: nextEvent
+        ? `next: ${nextEvent.name} ${daysOutLabel(nextEvent.date)}`
+        : "nothing on the books",
+    },
   ];
   const tiles = pool.filter((t) => canAccess(user.role, t.tab)).slice(0, 4);
 
@@ -164,6 +183,14 @@ export default async function OverviewPage() {
     alerts.push({
       sev: "info",
       text: `${openLessons} lesson slot${openLessons > 1 ? "s" : ""} still open today`,
+    });
+  }
+  for (const e of eventsNeedingAttention.slice(0, 2)) {
+    if (!canAccess(user.role, "events")) break;
+    const open = e.tasks.filter((t) => !t.done).length;
+    alerts.push({
+      sev: "warn",
+      text: `${e.name} ${daysOutLabel(e.date)} — ${open} task${open > 1 ? "s" : ""} still open`,
     });
   }
   if (canAccess(user.role, "caddie")) {

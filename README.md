@@ -13,7 +13,7 @@ lives in Postgres instead of one browser's local storage.
 
 ## What's in the pilot
 
-Eight modules, each fully wired to the database and gated by role:
+Ten modules, each fully wired to the database and gated by role:
 
 | # | Module | What it does |
 |---|--------|--------------|
@@ -25,19 +25,20 @@ Eight modules, each fully wired to the database and gated by role:
 | 05 | Pro Shop Inventory | Stock levels, reorder flags, POS |
 | 06 | Halfway House | Same POS engine, separate stock and par levels |
 | 07 | Member Directory | Households, dues, month-to-date charges, ledger detail |
+| 08 | Event Logistics | Event checklists, task owners, derived attention flags |
+| 09 | Tournament Ops | Pairings, flights, live scoring, payouts, comms, play status, rulings, sponsors |
 
-### Deliberately not built yet
+### Not built, and not faked anywhere in the UI
 
-**Event Logistics** and **Tournament Ops** are in the prototype but are not in
-this build. The instruction in `CLAUDE.md` is to go vertical — a module that is
-genuinely finished beats ten that are half done when a GM is standing in front
-of the screen. Tournament Ops in particular implies live scoring and SMS
-broadcasts, which need a Twilio account and a scoring workflow that a pilot
-club should specify before it gets built.
-
-Also not built, and not faked anywhere in the UI: **GHIN handicap sync** (the
-handicap is a manual field), **payment processing** (charges post to an internal
-ledger; no money moves), and **accounting exports**.
+- **SMS broadcast to the field.** Tournament Ops → Field Comms composes and
+  keeps a real, timestamped record of what the field was told, and every entry
+  is marked `not sent`. Wiring it to phones needs an SMS account and a number
+  members recognise; the schema carries a `delivery` state so the log never
+  implies a message went out when it did not.
+- **GHIN handicap sync** — the handicap is a manual field.
+- **Payment processing** — charges and payout credits post to the internal
+  ledger only. No money moves.
+- **Accounting exports.**
 
 ---
 
@@ -60,7 +61,7 @@ they all use the password printed by the seed (`clubos2026` unless you set
 | Role | Email | Sees |
 |------|-------|------|
 | General Manager | `gm@exmoor.test` | Everything |
-| Head Pro | `pro@exmoor.test` | Overview, tee sheet, lessons, course |
+| Head Pro | `pro@exmoor.test` | Overview, tee sheet, lessons, course, events, tournament |
 | Pro Shop Staff | `shop@exmoor.test` | Overview, lessons, both shops, members |
 | Caddie Master | `caddie@exmoor.test` | Overview, tee sheet, caddies, course |
 
@@ -125,10 +126,21 @@ balance.
 
 **Member balances are derived, not stored.** The prototype incremented a
 `mtdCharges` number on the member. Here every charge — pro shop, halfway house,
-lesson — writes a `MemberCharge` row, and a household's month-to-date figure is
-a sum over that ledger. The books can always be reconciled against the
-transactions that produced them, and the directory can show the detail behind
-any number.
+lesson, tournament payout — writes a `MemberCharge` row, and a household's
+month-to-date figure is a sum over that ledger. The books can always be
+reconciled against the transactions that produced them, and the directory can
+show the detail behind any number.
+
+**A payout is a negative charge.** Settling tournament prize money credits the
+winner's account through the same ledger every other module writes to, so it
+appears on the member directory like any other line and can be reversed. A
+payout whose team has no member account is refused rather than silently
+skipped.
+
+**Badges state what the data says.** The "needs attention" flag on an event is
+computed from its date and its open tasks, and leaderboard positions are
+computed with ties (T4, T6). Nothing in the UI asserts a number the underlying
+rows do not support.
 
 **Sales are transactional.** Stock decrement, sale, sale lines, and the member
 charge all commit together. The decrement is a conditional update, so two
@@ -156,6 +168,7 @@ app/
   (app)/            authenticated shell — one folder per module
     page.tsx        overview
     tee/ lessons/ course/ caddie/ shop/ halfway/ members/
+    events/ tournament/
     pos-actions.ts  shared POS engine for both stock locations
   login/            sign-in
 components/         sidebar, page shell, search, shared inventory board

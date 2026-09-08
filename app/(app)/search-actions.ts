@@ -25,7 +25,7 @@ export async function searchAction(query: string): Promise<SearchHit[]> {
   const contains = { contains: q, mode: "insensitive" as const };
   const allowed = (m: ModuleId) => canAccess(user.role, m);
 
-  const [members, products, caddies, lessons, slots] = await Promise.all([
+  const [members, products, caddies, lessons, slots, events, teams] = await Promise.all([
     allowed("members")
       ? prisma.member.findMany({
           where: { clubId, household: contains },
@@ -69,6 +69,20 @@ export async function searchAction(query: string): Promise<SearchHit[]> {
           orderBy: { date: "desc" },
         })
       : [],
+    allowed("events")
+      ? prisma.event.findMany({
+          where: { clubId, name: contains },
+          take: 5,
+          orderBy: { date: "asc" },
+        })
+      : [],
+    allowed("tournament")
+      ? prisma.tournamentTeam.findMany({
+          where: { tournament: { clubId }, name: contains },
+          include: { flight: true },
+          take: 5,
+        })
+      : [],
   ]);
 
   const hits: SearchHit[] = [];
@@ -99,6 +113,22 @@ export async function searchAction(query: string): Promise<SearchHit[]> {
   for (const s of slots) {
     const day = s.date.toISOString().slice(0, 10);
     hits.push({ cat: "Tee Sheet", label: `${s.teeTime} — ${s.groupName}`, href: `/tee?date=${day}` });
+  }
+
+  for (const e of events) {
+    const day = e.date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    });
+    hits.push({ cat: "Event", label: `${e.name} — ${day}`, href: "/events" });
+  }
+  for (const t of teams) {
+    hits.push({
+      cat: "Tournament",
+      label: `${t.name} — ${t.flight?.name ?? "unflighted"}`,
+      href: "/tournament?tab=scoring",
+    });
   }
 
   return hits.slice(0, 10);

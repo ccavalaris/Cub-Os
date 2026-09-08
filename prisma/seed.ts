@@ -5,7 +5,16 @@
  * Nothing about it is special: every row hangs off the Club record, so seeding a
  * different club is a matter of changing this file, not the application.
  */
-import { PrismaClient, type StockLocation, type Caddie, type Member, type Instructor } from "@prisma/client";
+import {
+  PrismaClient,
+  type StockLocation,
+  type Caddie,
+  type Member,
+  type Instructor,
+  type Flight,
+  type TeeGroup,
+  type TournamentTeam,
+} from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -122,6 +131,17 @@ function minutesToLabel(mins: number): string {
  */
 async function teardownClub(clubId: string): Promise<void> {
   await prisma.$transaction([
+    prisma.payout.deleteMany({ where: { tournament: { clubId } } }),
+    prisma.fieldMessage.deleteMany({ where: { tournament: { clubId } } }),
+    prisma.ruling.deleteMany({ where: { tournament: { clubId } } }),
+    prisma.playStatusEntry.deleteMany({ where: { tournament: { clubId } } }),
+    prisma.sponsor.deleteMany({ where: { tournament: { clubId } } }),
+    prisma.tournamentTeam.deleteMany({ where: { tournament: { clubId } } }),
+    prisma.teeGroup.deleteMany({ where: { tournament: { clubId } } }),
+    prisma.flight.deleteMany({ where: { tournament: { clubId } } }),
+    prisma.tournament.deleteMany({ where: { clubId } }),
+    prisma.eventTask.deleteMany({ where: { event: { clubId } } }),
+    prisma.event.deleteMany({ where: { clubId } }),
     prisma.memberCharge.deleteMany({ where: { clubId } }),
     prisma.saleLine.deleteMany({ where: { sale: { clubId } } }),
     prisma.sale.deleteMany({ where: { clubId } }),
@@ -412,6 +432,217 @@ async function main() {
     });
   }
   console.log(`Posted ${priorSales.length} prior sales to member accounts`);
+
+
+  // ---- events and the tournament that hangs off one of them ----------------
+  const staff = await prisma.user.findMany({ where: { clubId: club.id } });
+  const byRole = (r: string) => staff.find((u) => u.role === r) ?? null;
+
+  function dayOffset(days: number): Date {
+    const d = new Date(today);
+    d.setUTCDate(d.getUTCDate() + days);
+    return d;
+  }
+
+  // [label, done, owner role]
+  type TaskSpec = [string, boolean, string | null];
+
+  const eventSpecs: Array<{
+    name: string;
+    kind: "TOURNAMENT" | "PRIVATE_FUNCTION" | "MEMBER_EVENT";
+    offset: number;
+    detail: string;
+    location: string;
+    tasks: TaskSpec[];
+  }> = [
+    {
+      name: "Board of Governors Dinner",
+      kind: "PRIVATE_FUNCTION",
+      offset: 2,
+      detail: "24 guests",
+      location: "Main Dining Room",
+      tasks: [
+        ["Wine pairing approved by House Committee", true, null],
+        ["AV set for president's remarks", true, null],
+        ["Valet staffing confirmed", false, "GM"],
+      ],
+    },
+    {
+      name: "Member-Guest Invitational",
+      kind: "TOURNAMENT",
+      offset: 11,
+      detail: "156 players · Better Ball · Shotgun 8:00a",
+      location: "",
+      tasks: [
+        ["Tee gifts confirmed with pro shop", true, null],
+        ["Carts staged and charged (78)", true, null],
+        ["Scoring and leaderboard tent set", false, "PRO_SHOP"],
+        ["Caddie assignments finalized", false, "CADDIE_MASTER"],
+        ["Awards dinner headcount to kitchen", false, "GM"],
+        ["Sponsor banners placed on 11 and 17", false, "PRO_SHOP"],
+      ],
+    },
+    {
+      name: "Hartwell / Cho Wedding",
+      kind: "PRIVATE_FUNCTION",
+      offset: 25,
+      detail: "180 guests",
+      location: "Terrace + Lawn",
+      tasks: [
+        ["Course closed 2:00p for setup — posted to membership", true, null],
+        ["Tent and lighting vendor site walk", false, "GM"],
+        ["Ceremony chair count finalized with planner", false, "GM"],
+        ["Security detail scheduled for lot overflow", false, "CADDIE_MASTER"],
+      ],
+    },
+  ];
+
+  let tournamentEventId: string | null = null;
+  for (const spec of eventSpecs) {
+    const ev = await prisma.event.create({
+      data: {
+        clubId: club.id,
+        name: spec.name,
+        kind: spec.kind,
+        date: dayOffset(spec.offset),
+        detail: spec.detail,
+        location: spec.location,
+        tasks: {
+          create: spec.tasks.map(([label, done, role], i) => ({
+            label,
+            done,
+            sortKey: i * 10,
+            ownerId: done || !role ? null : (byRole(role)?.id ?? null),
+          })),
+        },
+      },
+    });
+    if (spec.kind === "TOURNAMENT") tournamentEventId = ev.id;
+  }
+  console.log(`Created ${eventSpecs.length} events with checklists`);
+
+  const tournament = await prisma.tournament.create({
+    data: {
+      clubId: club.id,
+      eventId: tournamentEventId,
+      name: "Member-Guest Invitational",
+      date: dayOffset(11),
+      format: "Better Ball · Shotgun 8:00a",
+      fieldSize: 32,
+      status: "ACTIVE",
+    },
+  });
+
+  const flightNames = ["Championship", "A Flight", "B Flight", "Senior"];
+  const flights: Flight[] = [];
+  for (const [i, name] of flightNames.entries()) {
+    flights.push(
+      await prisma.flight.create({
+        data: { tournamentId: tournament.id, name, sortKey: i * 10 },
+      }),
+    );
+  }
+
+  // A 16-group shotgun: 8 holes, two waves, two teams per group.
+  // [team name, flight index, member index | null, caddie index | null, thru, score, reported]
+  const teamSpecs: Array<[string, number, number | null, number | null, number, number, boolean]> = [
+    ["Whitfield / Marsh", 0, 0, 0, 14, -3, true],
+    ["Cho / Odom", 0, null, 1, 13, -1, true],
+    ["Sandoval / Renna", 0, 9, 2, 11, 1, true],
+    ["Blackwood / Fenwick", 0, null, 4, 12, 2, true],
+    ["Delacroix / Okafor", 1, 2, null, 16, 1, true],
+    ["Kessler / Hargrove", 1, 4, null, 12, 2, true],
+    ["Ainsley / Doyle", 1, null, 3, 9, 0, true],
+    ["Brandt / Pruitt", 1, null, null, 0, 0, false],
+    ["Nakamura / Sato", 2, 6, 5, 10, 0, true],
+    ["Chen / Rivera", 2, 7, null, 9, -2, true],
+    ["Vance / Webb", 2, null, 6, 8, 1, true],
+    ["Holt / Castille", 2, null, 7, 0, 0, false],
+    ["Thompson / Grieve", 3, null, null, 0, 0, false],
+    ["Ellison / Farrow", 3, null, null, 0, 0, false],
+    ["Sorensen / Park", 3, 1, null, 0, 0, false],
+    ["Ainsley / Whitfield", 3, null, null, 0, 0, false],
+  ];
+
+  const groups: TeeGroup[] = [];
+  for (let g = 0; g < 8; g++) {
+    groups.push(
+      await prisma.teeGroup.create({
+        data: {
+          tournamentId: tournament.id,
+          startHole: g + 1,
+          startTime: "8:00a",
+          wave: g < 4 ? "A" : "B",
+          sortKey: g * 10,
+        },
+      }),
+    );
+  }
+
+  const teams: TournamentTeam[] = [];
+  for (const [i, [name, fi, mi, ci, thru, score, reported]] of teamSpecs.entries()) {
+    teams.push(
+      await prisma.tournamentTeam.create({
+        data: {
+          tournamentId: tournament.id,
+          flightId: flights[fi].id,
+          groupId: groups[Math.floor(i / 2)].id,
+          name,
+          memberId: mi !== null ? members[mi].id : null,
+          caddieId: ci !== null ? caddies[ci].id : null,
+          thru,
+          scoreToPar: score,
+          reported,
+        },
+      }),
+    );
+  }
+  console.log(`Created tournament: ${teams.length} teams across ${groups.length} groups`);
+
+  const byName = (n: string) => teams.find((t) => t.name === n)!;
+  await prisma.payout.createMany({
+    data: [
+      { tournamentId: tournament.id, flightId: flights[0].id, place: "1st", teamId: byName("Whitfield / Marsh").id, amountCents: 120000 },
+      { tournamentId: tournament.id, flightId: flights[0].id, place: "2nd", teamId: byName("Cho / Odom").id, amountCents: 70000 },
+      { tournamentId: tournament.id, flightId: flights[1].id, place: "1st", teamId: byName("Delacroix / Okafor").id, amountCents: 60000 },
+      { tournamentId: tournament.id, flightId: flights[2].id, place: "1st", teamId: byName("Chen / Rivera").id, amountCents: 40000 },
+      { tournamentId: tournament.id, flightId: flights[3].id, place: "1st", teamId: byName("Sorensen / Park").id, amountCents: 40000 },
+    ],
+  });
+
+  await prisma.fieldMessage.create({
+    data: {
+      tournamentId: tournament.id,
+      body: "Good morning! Shotgun start confirmed for 8:00a. Range opens at 6:30a. See you on the tee.",
+      delivery: "LOGGED_ONLY",
+      createdAt: new Date(Date.now() - 5 * 3_600_000),
+    },
+  });
+  await prisma.playStatusEntry.create({
+    data: {
+      tournamentId: tournament.id,
+      status: "ACTIVE",
+      note: "Course inspected, dry conditions — play to proceed as scheduled.",
+      loggedAt: new Date(Date.now() - 4 * 3_600_000),
+    },
+  });
+  await prisma.ruling.create({
+    data: {
+      tournamentId: tournament.id,
+      hole: 7,
+      decision: "Free relief granted from ground under repair left of the fairway, Rule 16.1.",
+      official: "Head Pro",
+      loggedAt: new Date(Date.now() - 2 * 3_600_000),
+    },
+  });
+  await prisma.sponsor.createMany({
+    data: [
+      { tournamentId: tournament.id, name: "Titleist / Acushnet", tier: "Presenting", contactName: "J. Farrow", lastContactAt: new Date(Date.now() - 5 * 86_400_000), note: "Confirmed tee gift delivery for Thursday." },
+      { tournamentId: tournament.id, name: "First National Bank", tier: "Hole Sponsor", contactName: "M. Ellison", lastContactAt: new Date(Date.now() - 11 * 86_400_000), note: "Banner placement approved for No. 11 tee." },
+      { tournamentId: tournament.id, name: "Kestrel Wealth Partners", tier: "Hole Sponsor", contactName: "R. Doyle", note: "Requested logo on printed scorecards." },
+    ],
+  });
+  console.log("Created payouts, comms log, play status, a ruling, and sponsors");
 
   console.log("\nSeed complete.\n");
   for (const u of USERS) {

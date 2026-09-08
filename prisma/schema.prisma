@@ -44,6 +44,8 @@ model Club {
   charges     MemberCharge[]
   instructors Instructor[]
   courseDays  CourseDay[]
+  events      Event[]
+  tournaments Tournament[]
 }
 
 enum Role {
@@ -62,6 +64,8 @@ model User {
   passwordHash String
   role         Role
   createdAt    DateTime @default(now())
+
+  ownedTasks EventTask[]
 
   // Scoped to the club so two clubs can each have their own pro@ address.
   @@unique([clubId, email])
@@ -101,6 +105,7 @@ model Member {
   teeSlots TeeSlot[]
   lessons  Lesson[]
   sales    Sale[]
+  teams    TournamentTeam[]
 
   @@index([clubId, household])
 }
@@ -109,6 +114,7 @@ enum ChargeSource {
   PRO_SHOP
   HALFWAY_HOUSE
   LESSON
+  TOURNAMENT_PAYOUT
   MANUAL
 }
 
@@ -130,6 +136,7 @@ model MemberCharge {
   sale     Sale?   @relation(fields: [saleId], references: [id], onDelete: SetNull)
   lessonId String? @unique
   lesson   Lesson? @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  payout   Payout?
 
   @@index([clubId, memberId, postedAt])
 }
@@ -196,6 +203,7 @@ model Caddie {
   createdAt DateTime     @default(now())
 
   teeSlots TeeSlot[]
+  teams    TournamentTeam[]
 
   @@index([clubId, status])
 }
@@ -363,4 +371,209 @@ model MaintLogEntry {
   createdAt DateTime @default(now())
 
   @@index([clubId, loggedAt])
+}
+
+// ---------------------------------------------------------------- events
+
+enum EventKind {
+  TOURNAMENT
+  PRIVATE_FUNCTION
+  MEMBER_EVENT
+}
+
+model Event {
+  id        String    @id @default(cuid())
+  clubId    String
+  club      Club      @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  name      String
+  kind      EventKind @default(MEMBER_EVENT)
+  date      DateTime  @db.Date
+  detail    String    @default("") // "156 players · Shotgun 8:00a"
+  location  String    @default("")
+  createdAt DateTime  @default(now())
+
+  tasks      EventTask[]
+  tournament Tournament?
+
+  @@index([clubId, date])
+}
+
+model EventTask {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  label     String
+  done      Boolean  @default(false)
+  ownerId   String?
+  owner     User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  sortKey   Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([eventId, sortKey])
+}
+
+// ------------------------------------------------------------ tournament
+
+enum PlayStatus {
+  ACTIVE
+  DELAYED
+  SUSPENDED
+  COMPLETE
+}
+
+model Tournament {
+  id        String     @id @default(cuid())
+  clubId    String
+  club      Club       @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  eventId   String?    @unique
+  event     Event?     @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  name      String
+  date      DateTime   @db.Date
+  format    String     @default("")
+  status    PlayStatus @default(ACTIVE)
+  fieldSize Int        @default(0)
+
+  flights   Flight[]
+  groups    TeeGroup[]
+  teams     TournamentTeam[]
+  payouts   Payout[]
+  messages  FieldMessage[]
+  rulings   Ruling[]
+  statusLog PlayStatusEntry[]
+  sponsors  Sponsor[]
+
+  @@index([clubId, date])
+}
+
+model Flight {
+  id           String     @id @default(cuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  name         String
+  sortKey      Int        @default(0)
+
+  teams   TournamentTeam[]
+  payouts Payout[]
+
+  @@unique([tournamentId, name])
+}
+
+/// A starting group in a shotgun (or a tee time in a sequential start). Holds
+/// the teams that go off together.
+model TeeGroup {
+  id           String     @id @default(cuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  startHole    Int
+  startTime    String // "8:00a"
+  wave         String     @default("A")
+  sortKey      Int        @default(0)
+
+  teams TournamentTeam[]
+
+  @@unique([tournamentId, wave, startHole])
+  @@index([tournamentId, sortKey])
+}
+
+model TournamentTeam {
+  id           String     @id @default(cuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  flightId     String?
+  flight       Flight?    @relation(fields: [flightId], references: [id], onDelete: SetNull)
+  groupId      String?
+  group        TeeGroup?  @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  name         String // "Whitfield / Marsh"
+  memberId     String? // the member whose account any winnings credit
+  member       Member?    @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  caddieId     String?
+  caddie       Caddie?    @relation(fields: [caddieId], references: [id], onDelete: SetNull)
+  thru         Int        @default(0)
+  scoreToPar   Int        @default(0)
+  reported     Boolean    @default(false) // has a score come in from the course yet
+  updatedAt    DateTime   @updatedAt
+
+  payouts Payout[]
+
+  @@index([tournamentId, scoreToPar])
+}
+
+enum PayoutStatus {
+  PENDING
+  PAID
+}
+
+model Payout {
+  id           String          @id @default(cuid())
+  tournamentId String
+  tournament   Tournament      @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  flightId     String?
+  flight       Flight?         @relation(fields: [flightId], references: [id], onDelete: SetNull)
+  teamId       String?
+  team         TournamentTeam? @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  place        String // "1st"
+  amountCents  Int
+  status       PayoutStatus    @default(PENDING)
+  paidAt       DateTime?
+  // Set once the winnings are credited to a member account, so paying twice
+  // is impossible and the credit can be reversed with the payout.
+  chargeId     String?         @unique
+  charge       MemberCharge?   @relation(fields: [chargeId], references: [id], onDelete: SetNull)
+
+  @@index([tournamentId])
+}
+
+enum MessageDelivery {
+  LOGGED_ONLY
+  SENT
+}
+
+/// A broadcast to the field. Composing and logging is real; actually sending
+/// needs an SMS account, so delivery state records what really happened.
+model FieldMessage {
+  id           String          @id @default(cuid())
+  tournamentId String
+  tournament   Tournament      @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  body         String
+  delivery     MessageDelivery @default(LOGGED_ONLY)
+  sentById     String?
+  createdAt    DateTime        @default(now())
+
+  @@index([tournamentId, createdAt])
+}
+
+model Ruling {
+  id           String     @id @default(cuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  hole         Int
+  decision     String
+  official     String
+  loggedAt     DateTime   @default(now())
+
+  @@index([tournamentId, loggedAt])
+}
+
+model PlayStatusEntry {
+  id           String     @id @default(cuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  status       PlayStatus
+  note         String     @default("")
+  loggedAt     DateTime   @default(now())
+
+  @@index([tournamentId, loggedAt])
+}
+
+model Sponsor {
+  id            String     @id @default(cuid())
+  tournamentId  String
+  tournament    Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  name          String
+  tier          String     @default("Hole Sponsor")
+  contactName   String     @default("")
+  lastContactAt DateTime?
+  note          String     @default("")
+
+  @@index([tournamentId])
 }

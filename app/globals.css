@@ -853,3 +853,85 @@ table.inv tbody tr{cursor:default;}
   .role-switcher{flex-direction:column; align-items:stretch; gap:8px;}
   .role-switcher .who{margin-bottom:0;}
 }
+
+/* ---- event logistics ---- */
+.task-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(300px,1fr)); gap:9px 22px;}
+.task-row{position:relative;}
+.task-row .label{flex:1;}
+.event-flag{
+  font-size:10.5px; font-family:'IBM Plex Mono',monospace; letter-spacing:0.05em;
+  text-transform:uppercase; color:var(--clay); border:1px solid #E4C4BC; background:#F7EAE6;
+  padding:3px 8px; border-radius:2px;
+}
+.event-days{font-size:11px; font-family:'IBM Plex Mono',monospace; color:var(--ink-soft); margin-top:6px;}
+.owner{
+  font-size:10.5px; font-family:'IBM Plex Mono',monospace; color:var(--brass);
+  border:1px solid var(--line); border-radius:2px; padding:2px 6px; background:#fff;
+  cursor:pointer; flex-shrink:0; min-width:26px; text-align:center;
+}
+.owner:hover{border-color:var(--brass-lt); color:var(--hunter);}
+.owner-select{
+  font-family:'Inter',sans-serif; font-size:12px; padding:3px 6px;
+  border:1px solid var(--brass-lt); border-radius:2px; background:#fff; max-width:170px;
+}
+.task-remove{
+  color:var(--line); cursor:pointer; font-size:15px; line-height:1; padding:0 2px; flex-shrink:0;
+}
+.task-row:hover .task-remove{color:var(--ink-soft);}
+.task-remove:hover{color:var(--clay);}
+.event-foot{
+  display:flex; align-items:center; justify-content:space-between; gap:14px;
+  margin-top:16px; padding-top:14px; border-top:1px solid var(--line-soft); flex-wrap:wrap;
+}
+.add-task{display:flex; gap:8px; align-items:center; flex-wrap:wrap; flex:1;}
+.add-task input{
+  flex:1; min-width:220px; font-family:'Inter',sans-serif; font-size:13px;
+  padding:7px 10px; border:1px solid var(--line); border-radius:2px; background:#fff;
+}
+.add-task select{
+  font-family:'Inter',sans-serif; font-size:13px; padding:7px 10px;
+  border:1px solid var(--line); border-radius:2px; background:#fff;
+}
+
+/* ---- tournament ops ---- */
+.flight-head{
+  display:grid; padding:9px 18px;
+  grid-template-columns:56px 1fr 132px 90px 116px;
+  border-bottom:1px solid var(--line); background:#F4EDDD;
+  font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-soft); font-weight:700;
+}
+/* Widened from the prototype's template to fit the thru stepper. Guarded by a
+   min-width so it cannot override the mobile stacking rule further up. */
+@media (min-width:761px){
+  .lb-row{grid-template-columns:56px 1fr 132px 90px 116px;}
+}
+@media (max-width:760px){
+  /* The column header makes no sense once the rows stack. */
+  .flight-head{display:none;}
+}
+.lb-row.unreported .lb-score{color:var(--ink-soft); font-weight:400;}
+.not-live{
+  display:flex; gap:11px; align-items:flex-start;
+  border:1px solid var(--brass-lt); background:#FBF3E6; padding:13px 16px; margin-bottom:16px;
+}
+.not-live .nl-title{font-size:12.5px; font-weight:600; color:var(--hunter);}
+.not-live .nl-body{font-size:12.5px; color:var(--ink-soft); line-height:1.55; margin-top:3px;}
+.not-live .nl-mark{
+  font-size:10px; font-family:'IBM Plex Mono',monospace; letter-spacing:0.06em; text-transform:uppercase;
+  color:var(--brass); border:1px solid var(--brass-lt); background:#fff;
+  padding:3px 7px; border-radius:2px; flex-shrink:0;
+}
+.wave-tag{
+  font-size:10.5px; font-family:'IBM Plex Mono',monospace; color:var(--brass);
+  letter-spacing:0.05em; text-transform:uppercase;
+}
+.flight-block{margin-bottom:18px;}
+.sponsor-touch{margin-top:10px;}
+
+@media (max-width:760px){
+  .task-grid{grid-template-columns:1fr;}
+  .event-foot{align-items:flex-start; flex-direction:column;}
+  .add-task{width:100%;}
+  .add-task input, .add-task select{width:100%; min-width:0;}
+  .not-live{flex-direction:column; gap:8px;}
+}
