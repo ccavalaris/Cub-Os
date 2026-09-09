@@ -90,7 +90,11 @@ async function extractWithClaude(note: string, known: Known): Promise<Extraction
     max_tokens: 4000,
     system,
     messages: [{ role: "user", content: note }],
-    output_config: { format: zodOutputFormat(ExtractionSchema) },
+    // Pulling names, an event and a task list out of one sentence is a simple,
+    // tightly-specified job, and this runs while someone waits at a keyboard —
+    // often in front of a customer. Low effort keeps it quick; the schema is
+    // what guarantees the shape, not deliberation.
+    output_config: { format: zodOutputFormat(ExtractionSchema), effort: "low" },
   });
 
   if (!response.parsed_output) throw new Error("Claude returned no parseable extraction");

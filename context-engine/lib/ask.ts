@@ -93,6 +93,10 @@ async function answerWithClaude(question: string, retrieved: Retrieved): Promise
   const response = await anthropic().messages.create({
     model: MODEL,
     max_tokens: 1500,
+    // Answering does benefit from some deliberation — it has to weigh which of
+    // the retrieved records actually bear on the question — but not enough to
+    // justify a long pause on a phone between groups.
+    output_config: { effort: "medium" },
     system,
     messages: [
       {
