@@ -27,10 +27,10 @@ datasource db {
   // serverless functions open many short-lived connections and would exhaust
   // a direct connection pool.
   url       = env("DATABASE_URL")
-  // Migrations only, and required — Prisma does not fall back to DATABASE_URL
-  // when it is unset. Must be the DIRECT URL (port 5432) on Supabase, because
-  // DDL does not work through a transaction pooler. On a local Postgres set it
-  // to the same value as DATABASE_URL.
+  // Migrations only. Set this to the DIRECT URL (port 5432) when DATABASE_URL
+  // is a pooled connection, because DDL does not work through a transaction
+  // pooler. Leave it unset otherwise: scripts/migrate.mjs defaults it to
+  // DATABASE_URL, since Prisma itself will not.
   directUrl = env("DIRECT_URL")
 }
 

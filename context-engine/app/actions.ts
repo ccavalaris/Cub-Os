@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { InteractionSource, Priority, TaskStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { currentCourse } from "@/lib/course";
+import { getCourse } from "@/lib/course";
 import { extractFromNote, type ExtractionResult } from "@/lib/extract";
 import { ask, type Answer } from "@/lib/ask";
 
@@ -12,8 +12,16 @@ import { ask, type Answer } from "@/lib/ask";
 /// approved. The Head Pro always sees — and can correct — what the machine
 /// understood before it lands in the database.
 
+/// Actions run behind a rendered page, so by the time one fires a course must
+/// exist — its absence is a bug rather than the pre-seed state the pages show.
+async function requireCourse() {
+  const course = await getCourse();
+  if (!course) throw new Error("No course found. Run `npm run seed`.");
+  return course;
+}
+
 export async function previewNote(note: string): Promise<ExtractionResult> {
-  const course = await currentCourse();
+  const course = await requireCourse();
   const [members, events] = await Promise.all([
     prisma.member.findMany({ where: { courseId: course.id }, select: { name: true } }),
     prisma.event.findMany({
@@ -35,7 +43,7 @@ export type CommitPayload = {
 };
 
 export async function commitNote(payload: CommitPayload): Promise<{ taskCount: number }> {
-  const course = await currentCourse();
+  const course = await requireCourse();
   const courseId = course.id;
 
   // The raw note is stored first and everything else points back at it, so a
@@ -143,6 +151,6 @@ export async function markResponded(interactionId: string): Promise<void> {
 }
 
 export async function askCourse(question: string): Promise<Answer> {
-  const course = await currentCourse();
+  const course = await requireCourse();
   return ask(course.id, question);
 }

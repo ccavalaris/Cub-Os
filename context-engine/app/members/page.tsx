@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { currentCourse } from "@/lib/course";
+import { getCourse } from "@/lib/course";
+import { SetupNeeded } from "@/components/setup-needed";
 import { isOpen } from "@/lib/derive";
 import { daysOutLabel } from "@/lib/dates";
 import { Card, Empty } from "@/components/ui";
@@ -8,7 +9,8 @@ import { Card, Empty } from "@/components/ui";
 export const dynamic = "force-dynamic";
 
 export default async function MembersPage() {
-  const course = await currentCourse();
+  const course = await getCourse();
+  if (!course) return <SetupNeeded />;
   const members = await prisma.member.findMany({
     where: { courseId: course.id },
     include: {

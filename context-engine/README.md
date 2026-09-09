@@ -96,21 +96,22 @@ On Vercel:
 
 1. **New Project → import the repo.** Set **Root Directory** to
    `context-engine` — without it Vercel builds the Club OS app in the repo root.
-2. Set two environment variables. `DIRECT_URL` is required, not optional —
-   Prisma uses it for migrations and does not fall back to `DATABASE_URL`.
+2. Set one environment variable:
 
    | Variable | Value |
    |---|---|
    | `DATABASE_URL` | `<connection string>?schema=context_engine` |
-   | `DIRECT_URL` | `<direct connection string>?schema=context_engine` |
+   | `DIRECT_URL` | Only if `DATABASE_URL` is a pooled connection — see below. |
    | `ANTHROPIC_API_KEY` | Optional. Without it the app runs on its fallbacks. |
 
-   On Supabase the two differ: `DATABASE_URL` should be the **pooled** string
-   (port 6543, plus `&pgbouncer=true&connection_limit=1`) and `DIRECT_URL` the
-   **direct** one (port 5432). If you only have the direct string to hand, use
-   it for both — it works fine at demo traffic; swap the pooled one in later.
+   `DIRECT_URL` is only needed when `DATABASE_URL` points at a transaction
+   pooler, because DDL cannot run through one. On Supabase that means the
+   pooled string (port 6543) in `DATABASE_URL` and the direct string (port
+   5432) in `DIRECT_URL`. Using the direct string for `DATABASE_URL` and
+   leaving `DIRECT_URL` unset is fine at demo traffic.
 
-3. **Deploy.** Migrations run during the build.
+3. **Deploy.** Migrations run during the build. Until you seed, the app serves
+   a short "nothing here yet" page rather than an error.
 4. **Seed the demo data once**, from a machine that can reach the database:
 
    ```bash

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Nav } from "@/components/nav";
-import { currentCourse } from "@/lib/course";
+import { getCourse } from "@/lib/course";
+import { SetupNeeded } from "@/components/setup-needed";
 
 export const metadata: Metadata = {
   title: "Course Command Center",
@@ -13,13 +14,19 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const course = await currentCourse();
+  const course = await getCourse();
 
   return (
     <html lang="en">
       <body>
-        <Nav courseName={course.name} />
-        <main className="mx-auto max-w-5xl px-4 py-6 pb-20">{children}</main>
+        {course ? (
+          <>
+            <Nav courseName={course.name} />
+            <main className="mx-auto max-w-5xl px-4 py-6 pb-20">{children}</main>
+          </>
+        ) : (
+          <SetupNeeded />
+        )}
       </body>
     </html>
   );

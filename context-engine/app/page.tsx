@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { currentCourse } from "@/lib/course";
+import { getCourse } from "@/lib/course";
+import { SetupNeeded } from "@/components/setup-needed";
 import { attentionItems, isDueThisWeek, isDueToday, isOpen, isOverdue } from "@/lib/derive";
 import { daysOut, daysOutLabel, formatDate, formatLongDate, isToday, isWithinWeek, today } from "@/lib/dates";
 import { toTaskRow } from "@/lib/rows";
@@ -11,7 +12,8 @@ import { ContextInbox } from "@/components/context-inbox";
 export const dynamic = "force-dynamic";
 
 export default async function CommandCenter() {
-  const course = await currentCourse();
+  const course = await getCourse();
+  if (!course) return <SetupNeeded />;
   const courseId = course.id;
 
   const [tasks, events, interactions] = await Promise.all([
