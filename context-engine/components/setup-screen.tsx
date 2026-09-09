@@ -109,7 +109,7 @@ function Problem({
     <>
       <h1 className="mt-2 text-[22px] font-semibold tracking-tight">{title}</h1>
       <p className="mt-2 text-[14px] leading-relaxed text-muted">{body}</p>
-      <ol className="mt-5 space-y-2.5">
+      <ol className="mt-5 list-none space-y-2.5">
         {steps.map((step, i) => (
           <li key={i} className="flex gap-2.5 text-[13px] leading-relaxed text-muted">
             <span className="tnum shrink-0 text-faint">{i + 1}.</span>
