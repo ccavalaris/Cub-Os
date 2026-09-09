@@ -82,6 +82,46 @@ Two decisions worth knowing:
   every record extracted from it points back at that row — which is what lets a
   member profile be built from context instead of typed in.
 
+## Deploying
+
+The app is deploy-ready as it stands: `npm run build` runs `prisma migrate
+deploy` before `next build`, so the schema is applied as part of the deploy.
+
+**It can share a database with Club OS.** Both apps define `Member` and `Event`
+tables, so this one keeps its own in a Postgres schema named `context_engine`
+(the `?schema=` parameter on the connection strings below). Club OS's tables in
+`public` are untouched.
+
+On Vercel:
+
+1. **New Project → import the repo.** Set **Root Directory** to
+   `context-engine` — without it Vercel builds the Club OS app in the repo root.
+2. Set two environment variables. `DIRECT_URL` is required, not optional —
+   Prisma uses it for migrations and does not fall back to `DATABASE_URL`.
+
+   | Variable | Value |
+   |---|---|
+   | `DATABASE_URL` | `<connection string>?schema=context_engine` |
+   | `DIRECT_URL` | `<direct connection string>?schema=context_engine` |
+   | `ANTHROPIC_API_KEY` | Optional. Without it the app runs on its fallbacks. |
+
+   On Supabase the two differ: `DATABASE_URL` should be the **pooled** string
+   (port 6543, plus `&pgbouncer=true&connection_limit=1`) and `DIRECT_URL` the
+   **direct** one (port 5432). If you only have the direct string to hand, use
+   it for both — it works fine at demo traffic; swap the pooled one in later.
+
+3. **Deploy.** Migrations run during the build.
+4. **Seed the demo data once**, from a machine that can reach the database:
+
+   ```bash
+   DATABASE_URL="<direct string>?schema=context_engine" \
+   DIRECT_URL="<direct string>?schema=context_engine" \
+   npm run seed
+   ```
+
+   The seed replaces everything it finds, so it refuses to run against a
+   database that already holds data unless you pass `-- --force`.
+
 ## Checking it works
 
 ```bash

@@ -12,7 +12,7 @@ import { chromium } from "playwright";
 
 
 const EXE = "/opt/pw-browsers/chromium";
-const BASE = "http://127.0.0.1:3100";
+const BASE = process.env.SMOKE_BASE ?? "http://127.0.0.1:3100";
 const NOTE =
   "John Smith called. He's playing in the Member-Guest with Mike. Wants an early tee time and asked if his guest can park near the clubhouse. Need to confirm shirt sizes.";
 

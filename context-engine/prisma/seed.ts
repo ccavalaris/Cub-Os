@@ -14,7 +14,19 @@ function at(days: number, hour = 9): Date {
 }
 
 async function main() {
-  // Demo seed: wipe and rebuild so repeat runs are clean.
+  // This seed DELETES EVERYTHING and rebuilds. That is fine on a fresh or demo
+  // database and catastrophic on one someone is using, so it refuses to run
+  // against a database that already holds data unless explicitly forced.
+  const force = process.argv.includes("--force");
+  const existing = await prisma.course.count();
+  if (existing > 0 && !force) {
+    console.error(
+      "This database already has data. Seeding would delete it.\n" +
+        "Run `npm run seed -- --force` if you really want to replace it.",
+    );
+    process.exit(1);
+  }
+
   await prisma.$transaction([
     prisma.eventParticipant.deleteMany(),
     prisma.task.deleteMany(),

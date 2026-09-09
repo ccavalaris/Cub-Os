@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3100",
-    "build": "next build",
-    "start": "next start -p 3100",
+    "build": "prisma migrate deploy && next build",
+    "start": "next start",
     "seed": "tsx prisma/seed.ts",
     "typecheck": "tsc --noEmit",
     "setup": "node scripts/setup.mjs",
