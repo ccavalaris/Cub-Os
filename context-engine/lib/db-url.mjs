@@ -21,6 +21,7 @@ export function databaseUrl(env = process.env) {
 export function migrationUrl(env = process.env) {
   return (
     env.DIRECT_URL?.trim() ||
+    env.DATABASE_URL_UNPOOLED?.trim() ||
     env.POSTGRES_URL_NON_POOLING?.trim() ||
     databaseUrl(env)
   );

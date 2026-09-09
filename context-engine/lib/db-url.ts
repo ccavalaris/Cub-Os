@@ -29,9 +29,12 @@ export function databaseUrl(env: NodeJS.ProcessEnv = process.env): string | unde
 
 /// For migrations: DDL cannot run through a transaction pooler, so prefer a
 /// non-pooling URL when the host provides one alongside the pooled default.
+/// Neon calls it DATABASE_URL_UNPOOLED, Vercel's own integration calls it
+/// POSTGRES_URL_NON_POOLING.
 export function migrationUrl(env: NodeJS.ProcessEnv = process.env): string | undefined {
   return (
     env.DIRECT_URL?.trim() ||
+    env.DATABASE_URL_UNPOOLED?.trim() ||
     env.POSTGRES_URL_NON_POOLING?.trim() ||
     databaseUrl(env)
   );
