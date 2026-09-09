@@ -1,0 +1,173 @@
+// Course Context Engine — data model
+//
+// Six entities, deliberately small. The spec's rule was "don't over-engineer
+// the database", so relationships are plain foreign keys and there is no
+// inheritance, no polymorphic join tables, no soft deletes.
+//
+// Two design notes worth knowing:
+//
+//  - Task has no OVERDUE status. Overdue is `status != COMPLETE && dueDate <
+//    today`, derived at read time in lib/derive.ts. Storing it would let the
+//    stored flag drift from the due date it is supposed to describe, and the
+//    dashboard's whole job is to be trusted.
+//
+//  - Context is the provenance trail. Every note the Head Pro drops into the
+//    inbox is stored raw as a Context row, and every record the extractor
+//    creates from it points back at that row. That is what lets a member
+//    profile be *built from operational context* rather than typed into CRM
+//    fields, and what lets "Ask the Course" cite where an answer came from.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Course {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  members      Member[]
+  events       Event[]
+  tasks        Task[]
+  interactions Interaction[]
+  contexts     Context[]
+}
+
+model Member {
+  id        String   @id @default(cuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  name      String
+  email     String?
+  phone     String?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  interactions Interaction[]
+  tasks        Task[]
+  events       EventParticipant[]
+
+  @@index([courseId, name])
+}
+
+enum EventStatus {
+  PLANNING
+  PREPARING
+  READY
+  COMPLETE
+}
+
+model Event {
+  id          String      @id @default(cuid())
+  courseId    String
+  course      Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  name        String
+  date        DateTime
+  description String?
+  status      EventStatus @default(PLANNING)
+  createdAt   DateTime    @default(now())
+
+  tasks        Task[]
+  participants EventParticipant[]
+
+  @@index([courseId, date])
+}
+
+model EventParticipant {
+  id       String @id @default(cuid())
+  eventId  String
+  event    Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, memberId])
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+/// OPEN | IN_PROGRESS | COMPLETE only. "Overdue" is derived — see schema header.
+enum TaskStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETE
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  courseId    String
+  course      Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  dueDate     DateTime?
+  priority    Priority   @default(MEDIUM)
+  status      TaskStatus @default(OPEN)
+  owner       String?
+  memberId    String?
+  member      Member?    @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  eventId     String?
+  event       Event?     @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  createdAt   DateTime   @default(now())
+
+  /// The inbox note this task was extracted from, when it came from one.
+  sourceContextId String?
+  sourceContext   Context? @relation(fields: [sourceContextId], references: [id], onDelete: SetNull)
+
+  @@index([courseId, status, dueDate])
+}
+
+enum InteractionSource {
+  PHONE
+  EMAIL
+  TEXT
+  IN_PERSON
+  NOTE
+}
+
+model Interaction {
+  id        String            @id @default(cuid())
+  courseId  String
+  course    Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  memberId  String?
+  member    Member?           @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  content   String
+  date      DateTime          @default(now())
+  source    InteractionSource @default(NOTE)
+  /// The member asked for something here. Paired with "no open task for this
+  /// member" it is what surfaces them as waiting on a reply.
+  needsResponse Boolean       @default(false)
+  createdAt DateTime          @default(now())
+
+  /// The inbox note this interaction was extracted from, when it came from one.
+  sourceContextId String?
+  sourceContext   Context? @relation(fields: [sourceContextId], references: [id], onDelete: SetNull)
+
+  @@index([courseId, date])
+}
+
+/// A flexible record connecting information together. `type` is "note" for raw
+/// inbox captures; entityType/entityId point at whatever the note was about.
+model Context {
+  id         String   @id @default(cuid())
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  type       String
+  content    String
+  entityType String?
+  entityId   String?
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now())
+
+  tasks        Task[]
+  interactions Interaction[]
+
+  @@index([courseId, createdAt])
+}

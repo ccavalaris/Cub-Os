@@ -1,0 +1,195 @@
+import Link from "next/link";
+import { prisma } from "@/lib/prisma";
+import { currentCourse } from "@/lib/course";
+import { attentionItems, isDueThisWeek, isDueToday, isOpen, isOverdue } from "@/lib/derive";
+import { daysOut, daysOutLabel, formatDate, formatLongDate, isToday, isWithinWeek, today } from "@/lib/dates";
+import { toTaskRow } from "@/lib/rows";
+import { Card, Empty, Section, Stat } from "@/components/ui";
+import { TaskRow } from "@/components/task-row";
+import { ContextInbox } from "@/components/context-inbox";
+
+export const dynamic = "force-dynamic";
+
+export default async function CommandCenter() {
+  const course = await currentCourse();
+  const courseId = course.id;
+
+  const [tasks, events, interactions] = await Promise.all([
+    prisma.task.findMany({
+      where: { courseId },
+      include: { event: true, member: true },
+      orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
+    }),
+    prisma.event.findMany({
+      where: { courseId },
+      include: { tasks: true, participants: true },
+      orderBy: { date: "asc" },
+    }),
+    prisma.interaction.findMany({
+      where: { courseId },
+      include: { member: true },
+      orderBy: { date: "desc" },
+      take: 40,
+    }),
+  ]);
+
+  const attention = attentionItems({ tasks, events, interactions });
+
+  const openTasks = tasks.filter(isOpen);
+  const overdue = tasks.filter(isOverdue);
+  const dueToday = tasks.filter(isDueToday);
+  const eventsToday = events.filter((e) => isToday(e.date));
+  const eventsThisWeek = events.filter((e) => isWithinWeek(e.date) && !isToday(e.date));
+  const dueThisWeek = tasks.filter((t) => isDueThisWeek(t) && !isDueToday(t));
+  const waiting = interactions.filter(
+    (i) => i.needsResponse && i.member && daysOut(i.date) >= -21,
+  );
+
+  return (
+    <>
+      <div className="mb-5">
+        <h1 className="text-[22px] font-semibold tracking-tight">Course Command Center</h1>
+        <p className="mt-0.5 text-[13px] text-muted">{formatLongDate(today())}</p>
+      </div>
+
+      <div className="mb-7">
+        <ContextInbox />
+      </div>
+
+      <div className="mb-8 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        <Stat value={overdue.length} label="Overdue" href="/tasks?filter=overdue" tone="alert" />
+        <Stat value={openTasks.length} label="Open tasks" href="/tasks" />
+        <Stat value={eventsToday.length + eventsThisWeek.length} label="Events this week" href="/events" />
+        <Stat value={waiting.length} label="Awaiting reply" href="/members" />
+      </div>
+
+      <Section title="Attention needed" hint={attention.length ? `${attention.length}` : undefined}>
+        {attention.length === 0 ? (
+          <Empty>Nothing is overdue and no event in the next two weeks has open items.</Empty>
+        ) : (
+          <ul className="space-y-2">
+            {attention.map((item) => (
+              <li key={item.id}>
+                <Link
+                  href={item.href}
+                  className={`block rounded-xl border px-3.5 py-3 transition-colors ${
+                    item.severity === "high"
+                      ? "border-alert-line bg-alert-soft hover:border-alert"
+                      : "border-warn-line bg-warn-soft hover:border-warn"
+                  }`}
+                >
+                  <p
+                    className={`text-[14px] font-medium ${
+                      item.severity === "high" ? "text-alert" : "text-warn"
+                    }`}
+                  >
+                    {item.headline}
+                  </p>
+                  <p className="mt-0.5 text-[13px] leading-snug text-muted">{item.detail}</p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+
+      <Section title="Today">
+        <div className="space-y-2.5">
+          {eventsToday.length > 0 && (
+            <Card>
+              <ul className="divide-y divide-line-soft">
+                {eventsToday.map((e) => (
+                  <li key={e.id} className="px-3.5 py-2.5">
+                    <Link href={`/events/${e.id}`} className="group">
+                      <p className="text-[14px] font-medium group-hover:underline">{e.name}</p>
+                      <p className="mt-0.5 text-[12px] text-muted">
+                        {e.participants.length}{" "}
+                        {e.participants.length === 1 ? "participant" : "participants"} ·{" "}
+                        {e.tasks.filter(isOpen).length} open
+                      </p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          {dueToday.length > 0 ? (
+            <Card>
+              <ul className="divide-y divide-line-soft">
+                {dueToday.map((t) => (
+                  <TaskRow key={t.id} task={toTaskRow(t)} />
+                ))}
+              </ul>
+            </Card>
+          ) : (
+            eventsToday.length === 0 && <Empty>Nothing due today.</Empty>
+          )}
+
+          {waiting.length > 0 && (
+            <Card>
+              <p className="border-b border-line-soft px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+                Member follow-ups
+              </p>
+              <ul className="divide-y divide-line-soft">
+                {waiting.slice(0, 5).map((i) => (
+                  <li key={i.id} className="px-3.5 py-2.5">
+                    <Link href={`/members/${i.member!.id}`} className="group">
+                      <p className="text-[14px] font-medium group-hover:underline">
+                        {i.member!.name}
+                      </p>
+                      <p className="mt-0.5 text-[13px] leading-snug text-muted">{i.content}</p>
+                      <p className="mt-0.5 text-[12px] text-faint tnum">
+                        {daysOutLabel(i.date)} · {i.source.toLowerCase().replace("_", " ")}
+                      </p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+        </div>
+      </Section>
+
+      <Section title="This week">
+        <div className="space-y-2.5">
+          {eventsThisWeek.length > 0 && (
+            <Card>
+              <ul className="divide-y divide-line-soft">
+                {eventsThisWeek.map((e) => (
+                  <li key={e.id} className="px-3.5 py-2.5">
+                    <Link href={`/events/${e.id}`} className="group flex items-baseline justify-between gap-3">
+                      <span>
+                        <span className="text-[14px] font-medium group-hover:underline">
+                          {e.name}
+                        </span>
+                        <span className="ml-2 text-[12px] text-muted">
+                          {e.tasks.filter(isOpen).length} open
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-[12px] text-muted tnum">
+                        {formatDate(e.date)} · {daysOutLabel(e.date)}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          {dueThisWeek.length > 0 ? (
+            <Card>
+              <ul className="divide-y divide-line-soft">
+                {dueThisWeek.map((t) => (
+                  <TaskRow key={t.id} task={toTaskRow(t)} />
+                ))}
+              </ul>
+            </Card>
+          ) : (
+            eventsThisWeek.length === 0 && <Empty>Nothing else scheduled this week.</Empty>
+          )}
+        </div>
+      </Section>
+    </>
+  );
+}

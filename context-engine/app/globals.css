@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+/* A modern, quiet product surface: near-neutral ground, one green accent,
+   and severity colors reserved strictly for things that are actually wrong.
+   Deliberately not the heritage-clubhouse palette — this is an operating
+   dashboard, and it should read like one. */
+
+@theme {
+  --color-ground: #fafaf9;
+  --color-surface: #ffffff;
+  --color-line: #e7e5e4;
+  --color-line-soft: #f2f1ef;
+
+  --color-ink: #1c1917;
+  --color-muted: #78716c;
+  --color-faint: #a8a29e;
+
+  --color-accent: #15653f;
+  --color-accent-soft: #ecfdf3;
+  --color-accent-line: #a7e0bf;
+
+  --color-alert: #b42318;
+  --color-alert-soft: #fef3f2;
+  --color-alert-line: #fbd3ce;
+
+  --color-warn: #b54708;
+  --color-warn-soft: #fffaeb;
+  --color-warn-line: #fde3ac;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-ground);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Numbers line up in columns wherever they carry meaning. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Focus that is visible without being loud. */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
