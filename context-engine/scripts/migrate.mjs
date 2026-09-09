@@ -12,8 +12,17 @@
 // pooled setup needs the two to differ.
 
 import { execSync } from "node:child_process";
+import { databaseUrl, migrationUrl } from "../lib/db-url.mjs";
 
 const env = { ...process.env };
+
+// A database provisioned from a host's dashboard injects its credentials under
+// that integration's own variable name. Normalise whatever is present onto the
+// names Prisma expects, so no connection string has to be copied by hand.
+const resolved = databaseUrl(env);
+if (resolved) env.DATABASE_URL = resolved;
+const forMigrations = migrationUrl(env);
+if (forMigrations) env.DIRECT_URL = forMigrations;
 
 function warn(headline, ...detail) {
   console.log(`\n  ${headline}`);
@@ -23,13 +32,13 @@ function warn(headline, ...detail) {
 
 if (!env.DATABASE_URL) {
   warn(
-    "DATABASE_URL is not set, so the database schema was not applied.",
-    "Add it in your host's environment variables and redeploy.",
+    "No database connection string is set, so the schema was not applied.",
+    "Either add DATABASE_URL to the project's environment variables, or",
+    "create a database from the host's dashboard — Vercel injects its own",
+    "credentials automatically. Then redeploy.",
   );
   process.exit(0);
 }
-
-if (!env.DIRECT_URL) env.DIRECT_URL = env.DATABASE_URL;
 
 try {
   execSync("prisma migrate deploy", { stdio: "inherit", env });

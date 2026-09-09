@@ -96,7 +96,14 @@ On Vercel:
 
 1. **New Project → import the repo.** Set **Root Directory** to
    `context-engine` — without it Vercel builds the Club OS app in the repo root.
-2. Set one environment variable:
+2. Give it a database. The least error-prone route is to create one from the
+   host's own dashboard (on Vercel: the project's **Storage** tab → **Create
+   Database** → Postgres), which injects its own credentials — no connection
+   string is copied by hand, and there is no password to know. The app reads
+   whichever variable the integration sets (`DATABASE_URL`,
+   `POSTGRES_PRISMA_URL`, `POSTGRES_URL`, …; see `lib/db-url.ts`).
+
+   To point at your own database instead, set one environment variable:
 
    | Variable | Value |
    |---|---|

@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
+import { databaseUrl } from "./db-url";
 
 /// The MVP runs one course, but nothing is hardcoded to a club name — the
 /// course is looked up, not assumed.
@@ -16,7 +17,7 @@ export type CourseState =
   | { status: "unreachable"; detail: string };
 
 export async function courseState(): Promise<CourseState> {
-  if (!process.env.DATABASE_URL) return { status: "no-config" };
+  if (!databaseUrl()) return { status: "no-config" };
 
   try {
     const course = await prisma.course.findFirst({ orderBy: { createdAt: "asc" } });
@@ -35,7 +36,7 @@ export async function courseState(): Promise<CourseState> {
 }
 
 function describe(error: unknown): string {
-  const host = hostOf(process.env.DATABASE_URL ?? "");
+  const host = hostOf(databaseUrl() ?? "");
 
   // Prisma does not reliably populate errorCode on initialization errors, so
   // the message is matched too — losing the classification would drop exactly
