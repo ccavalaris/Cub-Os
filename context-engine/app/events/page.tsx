@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { getCourse } from "@/lib/course";
-import { SetupNeeded } from "@/components/setup-needed";
+import { courseState } from "@/lib/course";
 import { isOpen, isOverdue } from "@/lib/derive";
 import { daysOut, daysOutLabel, formatDate } from "@/lib/dates";
 import { Card, Empty } from "@/components/ui";
@@ -16,8 +15,9 @@ const STATUS_LABEL = {
 } as const;
 
 export default async function EventsPage() {
-  const course = await getCourse();
-  if (!course) return <SetupNeeded />;
+  const state = await courseState();
+  if (state.status !== "ok") return null; // the layout renders the setup screen
+  const course = state.course;
   const events = await prisma.event.findMany({
     where: { courseId: course.id },
     include: { tasks: true, participants: true },

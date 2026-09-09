@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { getCourse } from "@/lib/course";
-import { SetupNeeded } from "@/components/setup-needed";
+import { courseState } from "@/lib/course";
 import { isOpen, taskState } from "@/lib/derive";
 import { toTaskRow } from "@/lib/rows";
 import { Card, Empty } from "@/components/ui";
@@ -28,8 +27,9 @@ export default async function TasksPage({
     ? (filter as FilterKey)
     : "open";
 
-  const course = await getCourse();
-  if (!course) return <SetupNeeded />;
+  const state = await courseState();
+  if (state.status !== "ok") return null; // the layout renders the setup screen
+  const course = state.course;
   const tasks = await prisma.task.findMany({
     where: { courseId: course.id },
     include: { event: true, member: true },

@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { getCourse } from "@/lib/course";
-import { SetupNeeded } from "@/components/setup-needed";
+import { courseState } from "@/lib/course";
 import { isOpen } from "@/lib/derive";
 import { toTaskRow } from "@/lib/rows";
 import { daysOutLabel, formatDate } from "@/lib/dates";
@@ -13,8 +12,9 @@ export const dynamic = "force-dynamic";
 
 export default async function MemberPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const course = await getCourse();
-  if (!course) return <SetupNeeded />;
+  const state = await courseState();
+  if (state.status !== "ok") return null; // the layout renders the setup screen
+  const course = state.course;
 
   const member = await prisma.member.findFirst({
     where: { id, courseId: course.id },

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { InteractionSource, Priority, TaskStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getCourse } from "@/lib/course";
+import { courseState } from "@/lib/course";
 import { extractFromNote, type ExtractionResult } from "@/lib/extract";
 import { ask, type Answer } from "@/lib/ask";
 
@@ -15,9 +15,9 @@ import { ask, type Answer } from "@/lib/ask";
 /// Actions run behind a rendered page, so by the time one fires a course must
 /// exist — its absence is a bug rather than the pre-seed state the pages show.
 async function requireCourse() {
-  const course = await getCourse();
-  if (!course) throw new Error("No course found. Run `npm run seed`.");
-  return course;
+  const state = await courseState();
+  if (state.status !== "ok") throw new Error("No course found. Load the demo data first.");
+  return state.course;
 }
 
 export async function previewNote(note: string): Promise<ExtractionResult> {
