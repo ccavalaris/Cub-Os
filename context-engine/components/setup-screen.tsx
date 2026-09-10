@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { loadDemoDataAction } from "@/app/setup-actions";
+import { DEFAULT_COURSE_NAME } from "@/lib/demo-data";
 import type { CourseState } from "@/lib/course";
 
 /// What a deployment shows before it has usable data. Each state says what is
@@ -12,11 +13,12 @@ import type { CourseState } from "@/lib/course";
 export function SetupScreen({ state }: { state: Exclude<CourseState, { status: "ok" }> }) {
   const router = useRouter();
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [courseName, setCourseName] = useState(DEFAULT_COURSE_NAME);
   const [pending, start] = useTransition();
 
   function load() {
     start(async () => {
-      const r = await loadDemoDataAction();
+      const r = await loadDemoDataAction(courseName);
       setResult(r);
       if (r.ok) router.refresh();
     });
@@ -36,14 +38,32 @@ export function SetupScreen({ state }: { state: Exclude<CourseState, { status: "
             data in it yet. Load the demo course and you can start straight away.
           </p>
 
-          <button
-            type="button"
-            onClick={load}
-            disabled={pending || result?.ok}
-            className="mt-5 rounded-lg bg-accent px-4 py-2 text-[14px] font-medium text-white transition-opacity disabled:opacity-40"
-          >
-            {pending ? "Loading…" : result?.ok ? "Loaded" : "Load demo data"}
-          </button>
+          <div className="mt-5 flex flex-wrap items-end gap-2.5">
+            <div>
+              <label
+                htmlFor="course-name"
+                className="mb-1 block text-[11px] font-medium text-faint"
+              >
+                Club name
+              </label>
+              <input
+                id="course-name"
+                value={courseName}
+                onChange={(e) => setCourseName(e.target.value)}
+                disabled={pending || result?.ok}
+                placeholder={DEFAULT_COURSE_NAME}
+                className="w-64 rounded-lg border border-line bg-surface px-2.5 py-2 text-[14px] outline-none focus:border-accent disabled:opacity-50"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={load}
+              disabled={pending || result?.ok}
+              className="rounded-lg bg-accent px-4 py-2 text-[14px] font-medium text-white transition-opacity disabled:opacity-40"
+            >
+              {pending ? "Loading…" : result?.ok ? "Loaded" : "Load demo data"}
+            </button>
+          </div>
 
           {result && (
             <p
@@ -56,8 +76,10 @@ export function SetupScreen({ state }: { state: Exclude<CourseState, { status: "
           )}
 
           <p className="mt-6 text-[13px] leading-relaxed text-faint">
-            10 members, 5 events, 20 tasks and 30 notes for a fictional club — enough
-            to see how the dashboard, the inbox and Ask the Course behave.
+            10 members, 5 events, 20 tasks and 30 notes — enough to see how the
+            dashboard, the inbox and Ask the Course behave. The people and events are
+            invented; only the club name is yours to set, so put the name of whoever
+            you are showing it to on the door.
           </p>
         </>
       )}

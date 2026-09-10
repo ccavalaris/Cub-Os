@@ -30,7 +30,16 @@ export type SeedCounts = {
 /// responsible for deciding whether replacing is allowed — `prisma/seed.ts`
 /// requires --force and the in-app button only offers itself on an empty
 /// database.
-export async function loadDemoData(prisma: PrismaClient): Promise<SeedCounts> {
+export const DEFAULT_COURSE_NAME = "Brookhaven Golf Club";
+
+/// The club name is a parameter because a demo lands differently when the
+/// dashboard carries the name of the club sitting across the table. The members
+/// and events stay fictional — only the name on the door changes.
+export async function loadDemoData(
+  prisma: PrismaClient,
+  courseName: string = DEFAULT_COURSE_NAME,
+): Promise<SeedCounts> {
+  const name = courseName.trim() || DEFAULT_COURSE_NAME;
   await prisma.$transaction([
     prisma.eventParticipant.deleteMany(),
     prisma.task.deleteMany(),
@@ -41,7 +50,7 @@ export async function loadDemoData(prisma: PrismaClient): Promise<SeedCounts> {
     prisma.course.deleteMany(),
   ]);
 
-  const course = await prisma.course.create({ data: { name: "Brookhaven Golf Club" } });
+  const course = await prisma.course.create({ data: { name } });
   const courseId = course.id;
 
   const memberSeed = [
