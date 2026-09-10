@@ -104,7 +104,7 @@ export function ContextInbox() {
   }
 
   return (
-    <div className="rounded-xl border border-line bg-surface p-3.5">
+    <div className="rounded-lg border border-line bg-surface p-4 shadow-[0_1px_2px_rgba(22,21,15,0.04)]">
       <label htmlFor="note" className="sr-only">
         Add a note
       </label>
@@ -119,8 +119,9 @@ export function ContextInbox() {
           if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) read();
         }}
         rows={2}
+        style={{ minHeight: "3.2rem" }}
         placeholder="What happened? — “John Smith called about bringing two guests Saturday.”"
-        className="w-full resize-y border-0 bg-transparent text-[15px] leading-relaxed text-ink outline-none placeholder:text-faint"
+        className="w-full resize-y border-0 bg-transparent text-[17px] leading-relaxed text-ink outline-none placeholder:text-faint"
       />
 
       <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -128,7 +129,11 @@ export function ContextInbox() {
           type="button"
           onClick={read}
           disabled={reading || !note.trim()}
-          className="rounded-lg bg-accent px-3 py-1.5 text-[13px] font-medium text-white transition-opacity disabled:opacity-40"
+          className={`rounded-md px-3.5 py-1.5 text-[13px] font-medium transition-colors ${
+            note.trim()
+              ? "bg-accent text-white hover:opacity-90"
+              : "border border-line bg-surface text-faint"
+          }`}
         >
           {reading ? "Reading…" : "Read this note"}
         </button>
@@ -148,13 +153,11 @@ export function ContextInbox() {
       </div>
 
       {draft && (
-        <div className="mt-3.5 border-t border-line-soft pt-3.5">
+        <div className="-mx-4 -mb-4 mt-4 rounded-b-lg border-t border-line bg-sunken px-4 pb-4 pt-3.5">
           <div className="mb-3 flex items-center justify-between gap-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
-              What this note says
-            </p>
+            <p className="label text-muted">What this note says</p>
             <span
-              className="rounded-full border border-line px-2 py-0.5 text-[11px] text-faint"
+              className="label text-faint"
               title={
                 draft.engine === "claude"
                   ? "Read by Claude"
@@ -179,7 +182,7 @@ export function ContextInbox() {
                   })
                 }
                 placeholder="None"
-                className="w-full rounded-lg border border-line bg-ground px-2.5 py-1.5 text-[13px] outline-none focus:border-accent"
+                className="w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-[13px] outline-none focus:border-accent"
               />
             </Field>
 
@@ -189,7 +192,7 @@ export function ContextInbox() {
                 value={draft.eventName}
                 onChange={(e) => patch({ eventName: e.target.value })}
                 placeholder="None"
-                className="w-full rounded-lg border border-line bg-ground px-2.5 py-1.5 text-[13px] outline-none focus:border-accent"
+                className="w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-[13px] outline-none focus:border-accent"
               />
             </Field>
 
@@ -198,7 +201,7 @@ export function ContextInbox() {
                 id="f-topic"
                 value={draft.topic}
                 onChange={(e) => patch({ topic: e.target.value })}
-                className="w-full rounded-lg border border-line bg-ground px-2.5 py-1.5 text-[13px] outline-none focus:border-accent"
+                className="w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-[13px] outline-none focus:border-accent"
               />
             </Field>
 
@@ -208,7 +211,7 @@ export function ContextInbox() {
                   id="f-source"
                   value={draft.source}
                   onChange={(e) => patch({ source: e.target.value as InteractionSource })}
-                  className="rounded-lg border border-line bg-ground px-2.5 py-1.5 text-[13px] outline-none focus:border-accent"
+                  className="rounded-md border border-line bg-surface px-2.5 py-1.5 text-[13px] outline-none focus:border-accent"
                 >
                   {SOURCES.map((s) => (
                     <option key={s} value={s}>
@@ -231,9 +234,7 @@ export function ContextInbox() {
 
           <div className="mt-3.5">
             <div className="mb-1.5 flex items-center justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
-                Tasks ({draft.tasks.length})
-              </p>
+              <p className="label text-muted">Tasks ({draft.tasks.length})</p>
               <button
                 type="button"
                 onClick={() =>
@@ -259,12 +260,12 @@ export function ContextInbox() {
                       value={task.title}
                       onChange={(e) => patchTask(i, { title: e.target.value })}
                       placeholder="Task"
-                      className="min-w-0 flex-1 rounded-lg border border-line bg-ground px-2.5 py-1.5 text-[13px] outline-none focus:border-accent"
+                      className="min-w-0 flex-1 rounded-md border border-line bg-surface px-2.5 py-1.5 text-[13px] outline-none focus:border-accent"
                     />
                     <select
                       value={task.priority}
                       onChange={(e) => patchTask(i, { priority: e.target.value as Priority })}
-                      className="rounded-lg border border-line bg-ground px-2 py-1.5 text-[12px] outline-none focus:border-accent"
+                      className="rounded-md border border-line bg-surface px-2 py-1.5 text-[12px] outline-none focus:border-accent"
                     >
                       {PRIORITIES.map((p) => (
                         <option key={p} value={p}>
@@ -276,7 +277,7 @@ export function ContextInbox() {
                       type="date"
                       value={task.dueDate ?? ""}
                       onChange={(e) => patchTask(i, { dueDate: e.target.value || null })}
-                      className="tnum rounded-lg border border-line bg-ground px-2 py-1.5 text-[12px] outline-none focus:border-accent"
+                      className="tnum rounded-md border border-line bg-surface px-2 py-1.5 text-[12px] outline-none focus:border-accent"
                     />
                     <button
                       type="button"
@@ -297,14 +298,14 @@ export function ContextInbox() {
               type="button"
               onClick={save}
               disabled={saving}
-              className="rounded-lg bg-accent px-3 py-1.5 text-[13px] font-medium text-white transition-opacity disabled:opacity-40"
+              className="rounded-md bg-accent px-3.5 py-1.5 text-[13px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40"
             >
               {saving ? "Saving…" : "Save to course"}
             </button>
             <button
               type="button"
               onClick={() => setDraft(null)}
-              className="rounded-lg border border-line px-3 py-1.5 text-[13px] text-muted hover:text-ink"
+              className="rounded-md border border-line bg-surface px-3 py-1.5 text-[13px] text-muted hover:text-ink"
             >
               Discard
             </button>
@@ -326,7 +327,7 @@ function Field({
 }) {
   return (
     <div>
-      <label htmlFor={htmlFor} className="mb-1 block text-[11px] font-medium text-faint">
+      <label htmlFor={htmlFor} className="label mb-1.5 block text-faint">
         {label}
       </label>
       {children}

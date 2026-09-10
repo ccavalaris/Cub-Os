@@ -54,7 +54,7 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
         ← Events
       </Link>
 
-      <h1 className="mt-2 text-[22px] font-semibold tracking-tight">{event.name}</h1>
+      <h1 className="display mt-2.5 text-[32px] leading-[1.12]">{event.name}</h1>
       <p className="mt-0.5 text-[13px] text-muted tnum">
         {formatDate(event.date)} · {daysOutLabel(event.date)} ·{" "}
         <span className="text-ink">{STATUS_LABEL[event.status]}</span>

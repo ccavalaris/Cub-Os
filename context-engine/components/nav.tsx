@@ -15,24 +15,24 @@ export function Nav({ courseName }: { courseName: string }) {
   const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-20 border-b border-line bg-surface/90 backdrop-blur">
-      <div className="mx-auto max-w-5xl px-4">
-        <div className="flex h-14 items-center justify-between">
+    <header className="sticky top-0 z-20 border-b border-line bg-ground/92 backdrop-blur-sm">
+      <div className="mx-auto max-w-5xl px-5">
+        <div className="flex h-[52px] items-center gap-3">
           <Link href="/" className="flex items-center gap-2.5">
             <span
               aria-hidden
-              className="grid h-7 w-7 place-items-center rounded-md bg-accent text-[11px] font-semibold tracking-wide text-white"
+              className="grid h-[26px] w-[26px] place-items-center rounded-full border border-accent text-[10px] font-semibold tracking-wide text-accent"
             >
               CC
             </span>
-            <span className="text-[15px] font-semibold tracking-tight">{courseName}</span>
+            <span className="display text-[17px] leading-none">{courseName}</span>
           </Link>
         </div>
 
-        {/* Scrolls horizontally on a phone rather than wrapping into two rows. */}
+        {/* Scrolls sideways on a phone rather than wrapping into a second row. */}
         <nav
           aria-label="Main"
-          className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="-mx-5 flex gap-5 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {LINKS.map((link) => {
             const active =
@@ -43,10 +43,10 @@ export function Nav({ courseName }: { courseName: string }) {
                 href={link.href}
                 aria-current={active ? "page" : undefined}
                 className={[
-                  "whitespace-nowrap rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors",
+                  "-mb-px whitespace-nowrap border-b-2 pb-2.5 pt-0.5 text-[13.5px] transition-colors",
                   active
-                    ? "bg-accent text-white"
-                    : "text-muted hover:bg-line-soft hover:text-ink",
+                    ? "border-accent font-medium text-ink"
+                    : "border-transparent text-muted hover:border-line hover:text-ink",
                 ].join(" ")}
               >
                 {link.label}

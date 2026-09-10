@@ -14,13 +14,11 @@ export function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="mb-8">
-      <div className="mb-3 flex items-baseline justify-between gap-3">
+    <section className="mb-10">
+      <div className="mb-3 flex items-center justify-between gap-3 border-b border-line pb-2">
         <div className="flex items-baseline gap-2.5">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
-            {title}
-          </h2>
-          {hint && <span className="text-[12px] text-faint tnum">{hint}</span>}
+          <h2 className="label text-muted">{title}</h2>
+          {hint && <span className="tnum font-mono text-[11px] text-faint">{hint}</span>}
         </div>
         {action}
       </div>
@@ -37,43 +35,46 @@ export function Card({
   className?: string;
 }) {
   return (
-    <div className={`rounded-xl border border-line bg-surface ${className}`}>{children}</div>
+    <div className={`rounded-lg border border-line bg-surface ${className}`}>{children}</div>
   );
 }
 
 const STATE_STYLES: Record<DerivedTaskState, { label: string; className: string }> = {
-  overdue: { label: "Overdue", className: "bg-alert-soft text-alert border-alert-line" },
-  open: { label: "Open", className: "bg-line-soft text-muted border-line" },
-  in_progress: { label: "In progress", className: "bg-warn-soft text-warn border-warn-line" },
-  complete: { label: "Complete", className: "bg-accent-soft text-accent border-accent-line" },
+  overdue: { label: "Overdue", className: "text-alert" },
+  open: { label: "Open", className: "text-faint" },
+  in_progress: { label: "In progress", className: "text-warn" },
+  complete: { label: "Done", className: "text-accent" },
 };
 
+/// State reads as a small mono word rather than a coloured pill. A row of
+/// pills turns a task list into a field of badges and buries the task titles,
+/// which are the thing being scanned.
 export function StatePill({ state }: { state: DerivedTaskState }) {
   const s = STATE_STYLES[state];
-  return (
-    <span
-      className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${s.className}`}
-    >
-      {s.label}
-    </span>
-  );
+  return <span className={`label shrink-0 ${s.className}`}>{s.label}</span>;
 }
 
 export function PriorityMark({ priority }: { priority: "LOW" | "MEDIUM" | "HIGH" }) {
   if (priority !== "HIGH") return null;
   return (
-    <span className="inline-flex shrink-0 items-center rounded-full border border-alert-line bg-alert-soft px-2 py-0.5 text-[11px] font-medium text-alert">
-      High
-    </span>
+    <span
+      aria-label="High priority"
+      title="High priority"
+      className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-alert"
+    />
   );
 }
 
 export function Empty({ children }: { children: ReactNode }) {
   return (
-    <Card className="px-4 py-8 text-center text-[13px] text-faint">{children}</Card>
+    <div className="rounded-lg border border-dashed border-line px-4 py-9 text-center text-[13px] text-faint">
+      {children}
+    </div>
   );
 }
 
+/// A figure and its label, set like a printed table rather than a tile — the
+/// number carries the emphasis, the rule carries the grouping.
 export function Stat({
   value,
   label,
@@ -85,25 +86,28 @@ export function Stat({
   href?: string;
   tone?: "plain" | "alert";
 }) {
+  const alarming = tone === "alert" && value !== 0;
+
   const body = (
     <>
       <div
-        className={`tnum text-[28px] font-semibold leading-none ${
-          tone === "alert" && value !== 0 ? "text-alert" : "text-ink"
+        className={`display tnum text-[38px] leading-[1.05] ${
+          alarming ? "text-alert" : "text-ink"
         }`}
       >
         {value}
       </div>
-      <div className="mt-1.5 text-[12px] text-muted">{label}</div>
+      <div className="label mt-1.5 text-faint">{label}</div>
     </>
   );
 
   const className =
-    "rounded-xl border border-line bg-surface px-4 py-3.5 transition-colors" +
-    (href ? " hover:border-faint" : "");
+    "block border-t-2 border-ink pt-2.5 transition-colors" +
+    (alarming ? " border-alert" : "") +
+    (href ? " hover:border-accent" : "");
 
   return href ? (
-    <Link href={href} className={`block ${className}`}>
+    <Link href={href} className={className}>
       {body}
     </Link>
   ) : (

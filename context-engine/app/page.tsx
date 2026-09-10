@@ -49,16 +49,16 @@ export default async function CommandCenter() {
 
   return (
     <>
-      <div className="mb-5">
-        <h1 className="text-[22px] font-semibold tracking-tight">Course Command Center</h1>
-        <p className="mt-0.5 text-[13px] text-muted">{formatLongDate(today())}</p>
+      <div className="mb-6 pt-2">
+        <p className="label text-faint">{formatLongDate(today())}</p>
+        <h1 className="display mt-1.5 text-[34px] leading-[1.1]">Command Center</h1>
       </div>
 
       <div className="mb-7">
         <ContextInbox />
       </div>
 
-      <div className="mb-8 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+      <div className="mb-10 grid grid-cols-2 gap-x-5 gap-y-6 sm:grid-cols-4">
         <Stat value={overdue.length} label="Overdue" href="/tasks?filter=overdue" tone="alert" />
         <Stat value={openTasks.length} label="Open tasks" href="/tasks" />
         <Stat value={eventsToday.length + eventsThisWeek.length} label="Events this week" href="/events" />
@@ -69,25 +69,31 @@ export default async function CommandCenter() {
         {attention.length === 0 ? (
           <Empty>Nothing is overdue and no event in the next two weeks has open items.</Empty>
         ) : (
-          <ul className="space-y-2">
+          <ul className="divide-y divide-line-soft border-y border-line-soft">
             {attention.map((item) => (
               <li key={item.id}>
                 <Link
                   href={item.href}
-                  className={`block rounded-xl border px-3.5 py-3 transition-colors ${
-                    item.severity === "high"
-                      ? "border-alert-line bg-alert-soft hover:border-alert"
-                      : "border-warn-line bg-warn-soft hover:border-warn"
-                  }`}
+                  className="group flex gap-3.5 py-3.5 transition-colors hover:bg-sunken/60"
                 >
-                  <p
-                    className={`text-[14px] font-medium ${
-                      item.severity === "high" ? "text-alert" : "text-warn"
+                  <span
+                    aria-hidden
+                    className={`mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full ${
+                      item.severity === "high" ? "bg-alert" : "bg-warn"
                     }`}
-                  >
-                    {item.headline}
-                  </p>
-                  <p className="mt-0.5 text-[13px] leading-snug text-muted">{item.detail}</p>
+                  />
+                  <span className="min-w-0">
+                    <span
+                      className={`display block text-[19px] leading-tight ${
+                        item.severity === "high" ? "text-alert" : "text-ink"
+                      }`}
+                    >
+                      {item.headline}
+                    </span>
+                    <span className="mt-1 block text-[13.5px] leading-snug text-muted">
+                      {item.detail}
+                    </span>
+                  </span>
                 </Link>
               </li>
             ))}
@@ -130,7 +136,7 @@ export default async function CommandCenter() {
 
           {waiting.length > 0 && (
             <Card>
-              <p className="border-b border-line-soft px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+              <p className="label border-b border-line-soft px-3.5 py-2.5 text-muted">
                 Member follow-ups
               </p>
               <ul className="divide-y divide-line-soft">

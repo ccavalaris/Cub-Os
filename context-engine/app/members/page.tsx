@@ -23,8 +23,8 @@ export default async function MembersPage() {
 
   return (
     <>
-      <h1 className="mb-1 text-[22px] font-semibold tracking-tight">Members</h1>
-      <p className="mb-5 text-[13px] text-muted">
+      <h1 className="display pt-2 text-[34px] leading-[1.1]">Members</h1>
+      <p className="mb-7 mt-1 text-[13.5px] text-muted">
         {members.length} members. Profiles are built from the notes you add, not typed in.
       </p>
 

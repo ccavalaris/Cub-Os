@@ -39,7 +39,7 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
         ← Members
       </Link>
 
-      <h1 className="mt-2 text-[22px] font-semibold tracking-tight">{member.name}</h1>
+      <h1 className="display mt-2.5 text-[32px] leading-[1.12]">{member.name}</h1>
       <p className="mb-6 mt-0.5 flex flex-wrap gap-x-3 text-[13px] text-muted">
         {member.email && <span>{member.email}</span>}
         {member.phone && <span className="tnum">{member.phone}</span>}

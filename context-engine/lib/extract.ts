@@ -116,6 +116,11 @@ const TASK_TRIGGERS: [RegExp, (rest: string) => string][] = [
   [/^needs\s+(.*)/i, (r) => `Arrange ${r}`],
   [/^(please\s+)?(confirm|check|book|order|call|email|arrange|schedule|set up|follow up on)\b(.*)/i, (r) => r],
   [/^asked (if|whether|about)\s+(.*)/i, (r) => `Confirm ${r}`],
+  // "wants to know if X" is a question being asked, not an instruction to
+  // carry out — it becomes "Confirm X", unlike "wants to add X" which is
+  // already the instruction.
+  [/^(wants|would like)\s+to\s+know\s+(?:if|whether)\s+(.*)/i, (r) => `Confirm ${r}`],
+  [/^(wants|would like|requesting|requested|asking for)\s+to\s+(.*)/i, (r) => r],
   [/^(wants|would like|requesting|requested|asking for)\s+(.*)/i, (r) => `Confirm ${r}`],
   [/^wondering (if|about)\s+(.*)/i, (r) => `Confirm ${r}`],
 ];

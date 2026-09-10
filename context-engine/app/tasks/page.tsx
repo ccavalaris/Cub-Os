@@ -64,7 +64,8 @@ export default async function TasksPage({
 
   return (
     <>
-      <h1 className="mb-3 text-[22px] font-semibold tracking-tight">Tasks</h1>
+      <h1 className="display pt-2 text-[34px] leading-[1.1]">Tasks</h1>
+      <div className="mb-4" />
 
       <div className="mb-5 flex flex-wrap gap-1.5">
         {FILTERS.map((f) => (
