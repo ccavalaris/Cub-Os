@@ -68,7 +68,7 @@ export function ContextInbox() {
     if (!draft) return;
     startSaving(async () => {
       try {
-        const { taskCount } = await commitNote({
+        const { taskCount, duplicate } = await commitNote({
           note: note.trim(),
           memberNames: draft.memberNames,
           eventName: draft.eventName.trim() || null,
@@ -78,9 +78,11 @@ export function ContextInbox() {
           tasks: draft.tasks,
         });
         setSaved(
-          taskCount === 0
-            ? "Saved to the course."
-            : `Saved — ${taskCount} task${taskCount === 1 ? "" : "s"} created.`,
+          duplicate
+            ? "That note is already recorded, so nothing was duplicated."
+            : taskCount === 0
+              ? "Saved to the course."
+              : `Saved — ${taskCount} task${taskCount === 1 ? "" : "s"} created.`,
         );
         setNote("");
         setDraft(null);

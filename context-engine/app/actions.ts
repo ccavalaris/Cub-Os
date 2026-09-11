@@ -42,9 +42,28 @@ export type CommitPayload = {
   tasks: { title: string; priority: Priority; dueDate: string | null }[];
 };
 
-export async function commitNote(payload: CommitPayload): Promise<{ taskCount: number }> {
+export type CommitResult = { taskCount: number; duplicate: boolean };
+
+export async function commitNote(payload: CommitPayload): Promise<CommitResult> {
   const course = await requireCourse();
   const courseId = course.id;
+  const note = payload.note.trim();
+
+  // The same note saved twice is a double-submit or a second run through the
+  // demo, not a second thing that happened — and because everything hangs off
+  // the stored note, saving it again fans out into a duplicate of every record
+  // the first save made: the note, a follow-up on each member named, and every
+  // task. Left unguarded that is what the dashboard shows, five identical
+  // rows deep.
+  //
+  // Checked rather than enforced by a unique index: the note is free text and
+  // can exceed what Postgres will index, and the write path is a person
+  // clicking Save on a disabled-while-saving button, not concurrent writers.
+  const already = await prisma.context.findFirst({
+    where: { courseId, type: "note", content: { equals: note, mode: "insensitive" } },
+    select: { id: true },
+  });
+  if (already) return { taskCount: 0, duplicate: true };
 
   // The raw note is stored first and everything else points back at it, so a
   // task can always be traced to the sentence it came from.
@@ -52,7 +71,7 @@ export async function commitNote(payload: CommitPayload): Promise<{ taskCount: n
     data: {
       courseId,
       type: "note",
-      content: payload.note,
+      content: note,
       metadata: {
         topic: payload.topic,
         eventName: payload.eventName,
@@ -89,7 +108,7 @@ export async function commitNote(payload: CommitPayload): Promise<{ taskCount: n
         data: {
           courseId,
           memberId,
-          content: payload.note,
+          content: note,
           source: payload.source,
           needsResponse: payload.needsResponse && index === 0,
           sourceContextId: context.id,
@@ -100,7 +119,7 @@ export async function commitNote(payload: CommitPayload): Promise<{ taskCount: n
     await prisma.interaction.create({
       data: {
         courseId,
-        content: payload.note,
+        content: note,
         source: payload.source,
         needsResponse: payload.needsResponse,
         sourceContextId: context.id,
@@ -134,7 +153,7 @@ export async function commitNote(payload: CommitPayload): Promise<{ taskCount: n
   }
 
   revalidatePath("/", "layout");
-  return { taskCount: tasks.length };
+  return { taskCount: tasks.length, duplicate: false };
 }
 
 export async function setTaskStatus(taskId: string, status: TaskStatus): Promise<void> {

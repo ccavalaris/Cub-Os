@@ -2,8 +2,9 @@ import { chromium } from "playwright";
 
 // End-to-end smoke test. Boots nothing itself — start the app first:
 //
-//   npm run dev            (in one terminal)
-//   node scripts/smoke.mjs (in another)
+//   npm run seed -- --force  (the suite writes, so it wants a clean database)
+//   npm run dev              (in one terminal)
+//   node scripts/smoke.mjs   (in another)
 //
 // Runs the demo the product exists for: drop one messy note in the inbox,
 // check it became the right members, event and tasks, then ask the course
@@ -61,9 +62,45 @@ check("task: shirt sizes", titles.some((t) => /shirt size/i.test(t)), titles.joi
 // user edits before saving — the whole point of the preview step
 await taskInputs[0].fill("Confirm early tee time for Saturday");
 
+// The suite writes as it goes, so it wants a freshly seeded database. Since
+// the note guard landed, a second run against the same database is refused
+// here rather than quietly adding another copy of everything — which is the
+// better failure, but only if it says so instead of timing out.
 await page.click("text=Save to course");
-await page.waitForSelector("text=/Saved — \\d+ tasks? created/", { timeout: 20000 });
+const savedMessage = await page
+  .waitForSelector("text=/Saved — \\d+ tasks? created|already recorded/i", { timeout: 20000 })
+  .then((el) => el.textContent());
+
+if (/already recorded/i.test(savedMessage)) {
+  console.log("\n  This database already holds the example note from an earlier run.");
+  console.log("  Reseed, then run again:  npm run seed -- --force\n");
+  await browser.close();
+  process.exit(1);
+}
 check("note saved with tasks", true);
+
+// ---------- the same note again is refused, not duplicated ----------
+// Re-clicking "Try an example" between rehearsals used to fan the same note
+// out into a second copy of every record it made.
+{
+  const countRows = async (text) =>
+    page.locator(`text=${JSON.stringify(text)}`).count();
+  // Counted on a freshly loaded dashboard both times, so the comparison is
+  // against what the page actually renders rather than a mid-refresh DOM.
+  await page.goto(BASE, { waitUntil: "networkidle" });
+  const before = await countRows("Confirm early tee time for Saturday");
+
+  await page.fill("#note", NOTE);
+  await page.click("text=Read this note");
+  await page.waitForSelector("text=What this note says", { timeout: 30000 });
+  await page.click("text=Save to course");
+  await page.waitForSelector("text=/already recorded/i", { timeout: 20000 });
+  check("duplicate note refused", true);
+
+  await page.goto(BASE, { waitUntil: "networkidle" });
+  const after = await countRows("Confirm early tee time for Saturday");
+  check("duplicate note created no second task", after === before, `${before} → ${after}`);
+}
 
 // ---------- The edit survived, and the note connected the dots ----------
 await page.goto(`${BASE}/members`, { waitUntil: "networkidle" });
