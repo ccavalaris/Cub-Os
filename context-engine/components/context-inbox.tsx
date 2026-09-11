@@ -104,10 +104,14 @@ export function ContextInbox() {
   }
 
   return (
-    <div className="rounded-lg border border-line bg-surface p-4 shadow-[0_1px_2px_rgba(22,21,15,0.04)]">
-      <label htmlFor="note" className="sr-only">
-        Add a note
-      </label>
+    <div className="overflow-hidden rounded-[5px] border border-line bg-surface shadow-[0_1px_2px_rgba(32,31,27,0.05)]">
+      {/* A brass edge marks the one input the whole product is built around. */}
+      <div aria-hidden className="h-[3px] bg-brass" />
+
+      <div className="p-4">
+        <label htmlFor="note" className="label mb-2 block text-faint">
+          Context inbox
+        </label>
       <textarea
         id="note"
         value={note}
@@ -129,9 +133,9 @@ export function ContextInbox() {
           type="button"
           onClick={read}
           disabled={reading || !note.trim()}
-          className={`rounded-md px-3.5 py-1.5 text-[13px] font-medium transition-colors ${
+          className={`rounded-[4px] px-3.5 py-1.5 text-[13px] font-medium transition-colors ${
             note.trim()
-              ? "bg-accent text-white hover:opacity-90"
+              ? "bg-accent text-ground hover:opacity-90"
               : "border border-line bg-surface text-faint"
           }`}
         >
@@ -153,7 +157,7 @@ export function ContextInbox() {
       </div>
 
       {draft && (
-        <div className="-mx-4 -mb-4 mt-4 rounded-b-lg border-t border-line bg-sunken px-4 pb-4 pt-3.5">
+        <div className="-mx-4 -mb-4 mt-4 border-t border-line bg-sunken px-4 pb-4 pt-3.5">
           <div className="mb-3 flex items-center justify-between gap-2">
             <p className="label text-muted">What this note says</p>
             <span
@@ -182,7 +186,7 @@ export function ContextInbox() {
                   })
                 }
                 placeholder="None"
-                className="w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-[13px] outline-none focus:border-accent"
+                className="w-full rounded-[4px] border border-line bg-surface px-2.5 py-1.5 text-[13px] outline-none focus:border-accent"
               />
             </Field>
 
@@ -192,7 +196,7 @@ export function ContextInbox() {
                 value={draft.eventName}
                 onChange={(e) => patch({ eventName: e.target.value })}
                 placeholder="None"
-                className="w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-[13px] outline-none focus:border-accent"
+                className="w-full rounded-[4px] border border-line bg-surface px-2.5 py-1.5 text-[13px] outline-none focus:border-accent"
               />
             </Field>
 
@@ -201,7 +205,7 @@ export function ContextInbox() {
                 id="f-topic"
                 value={draft.topic}
                 onChange={(e) => patch({ topic: e.target.value })}
-                className="w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-[13px] outline-none focus:border-accent"
+                className="w-full rounded-[4px] border border-line bg-surface px-2.5 py-1.5 text-[13px] outline-none focus:border-accent"
               />
             </Field>
 
@@ -211,7 +215,7 @@ export function ContextInbox() {
                   id="f-source"
                   value={draft.source}
                   onChange={(e) => patch({ source: e.target.value as InteractionSource })}
-                  className="rounded-md border border-line bg-surface px-2.5 py-1.5 text-[13px] outline-none focus:border-accent"
+                  className="rounded-[4px] border border-line bg-surface px-2.5 py-1.5 text-[13px] outline-none focus:border-accent"
                 >
                   {SOURCES.map((s) => (
                     <option key={s} value={s}>
@@ -260,7 +264,7 @@ export function ContextInbox() {
                       value={task.title}
                       onChange={(e) => patchTask(i, { title: e.target.value })}
                       placeholder="Task"
-                      className="min-w-0 flex-1 rounded-md border border-line bg-surface px-2.5 py-1.5 text-[13px] outline-none focus:border-accent"
+                      className="min-w-0 flex-1 rounded-[4px] border border-line bg-surface px-2.5 py-1.5 text-[13px] outline-none focus:border-accent"
                     />
                     <select
                       value={task.priority}
@@ -298,7 +302,7 @@ export function ContextInbox() {
               type="button"
               onClick={save}
               disabled={saving}
-              className="rounded-md bg-accent px-3.5 py-1.5 text-[13px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+              className="rounded-[4px] bg-accent px-3.5 py-1.5 text-[13px] font-medium text-ground transition-opacity hover:opacity-90 disabled:opacity-40"
             >
               {saving ? "Saving…" : "Save to course"}
             </button>
@@ -311,7 +315,8 @@ export function ContextInbox() {
             </button>
           </div>
         </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

@@ -53,7 +53,13 @@ export function AskPanel({ aiEnabled }: { aiEnabled: boolean }) {
         <button
           type="submit"
           disabled={pending || !question.trim()}
-          className="shrink-0 rounded-lg bg-accent px-3.5 py-1.5 text-[13px] font-medium text-white transition-opacity disabled:opacity-40"
+          /* Resting state is an outline, not a faded fill: a washed-out green
+             button reads as broken rather than as waiting for a question. */
+          className={`shrink-0 rounded-[4px] px-3.5 py-1.5 text-[13px] font-medium transition-colors ${
+            question.trim()
+              ? "bg-accent text-ground hover:opacity-90"
+              : "border border-line bg-surface text-faint"
+          }`}
         >
           {pending ? "…" : "Ask"}
         </button>

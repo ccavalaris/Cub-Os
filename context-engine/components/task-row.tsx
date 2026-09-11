@@ -44,7 +44,7 @@ export function TaskRow({ task, showPills = true }: { task: TaskRowData; showPil
         disabled={pending}
         aria-label={done ? `Reopen ${task.title}` : `Complete ${task.title}`}
         className={`mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded border transition-colors ${
-          done ? "border-accent bg-accent text-white" : "border-faint hover:border-accent"
+          done ? "border-accent bg-accent text-ground" : "border-faint hover:border-accent"
         }`}
       >
         {done && (

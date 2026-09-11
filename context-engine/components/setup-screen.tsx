@@ -26,13 +26,19 @@ export function SetupScreen({ state }: { state: Exclude<CourseState, { status: "
 
   return (
     <div className="mx-auto max-w-xl px-4 py-16">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
-        Course Context Engine
-      </p>
+      <div className="mb-6 flex items-center gap-3">
+        <span
+          aria-hidden
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-brass text-brass ring-1 ring-inset ring-brass/25"
+        >
+          <span className="font-mono text-[11px] font-medium tracking-[0.08em]">CC</span>
+        </span>
+        <p className="label text-faint">Course Context Engine</p>
+      </div>
 
       {state.status === "empty" && (
         <>
-          <h1 className="mt-2 text-[22px] font-semibold tracking-tight">Ready to go</h1>
+          <h1 className="display text-[30px] leading-tight text-accent">Ready to go</h1>
           <p className="mt-2 text-[14px] leading-relaxed text-muted">
             The database is connected and the schema is in place — there is just no
             data in it yet. Load the demo course and you can start straight away.
@@ -52,14 +58,14 @@ export function SetupScreen({ state }: { state: Exclude<CourseState, { status: "
                 onChange={(e) => setCourseName(e.target.value)}
                 disabled={pending || result?.ok}
                 placeholder={DEFAULT_COURSE_NAME}
-                className="w-64 rounded-lg border border-line bg-surface px-2.5 py-2 text-[14px] outline-none focus:border-accent disabled:opacity-50"
+                className="w-64 rounded-[4px] border border-line bg-surface px-2.5 py-2 text-[14px] outline-none focus:border-accent disabled:opacity-50"
               />
             </div>
             <button
               type="button"
               onClick={load}
               disabled={pending || result?.ok}
-              className="rounded-lg bg-accent px-4 py-2 text-[14px] font-medium text-white transition-opacity disabled:opacity-40"
+              className="rounded-[4px] bg-accent px-4 py-2 text-[14px] font-medium text-ground transition-opacity hover:opacity-90 disabled:opacity-40"
             >
               {pending ? "Loading…" : result?.ok ? "Loaded" : "Load demo data"}
             </button>
@@ -68,7 +74,7 @@ export function SetupScreen({ state }: { state: Exclude<CourseState, { status: "
           {result && (
             <p
               className={`mt-3 text-[13px] leading-relaxed ${
-                result.ok ? "text-accent" : "text-alert"
+                result.ok ? "text-sage" : "text-alert"
               }`}
             >
               {result.message}
@@ -129,7 +135,7 @@ function Problem({
 }) {
   return (
     <>
-      <h1 className="mt-2 text-[22px] font-semibold tracking-tight">{title}</h1>
+      <h1 className="display text-[30px] leading-tight text-accent">{title}</h1>
       <p className="mt-2 text-[14px] leading-relaxed text-muted">{body}</p>
       <ol className="mt-5 list-none space-y-2.5">
         {steps.map((step, i) => (

@@ -35,7 +35,11 @@ export function Card({
   className?: string;
 }) {
   return (
-    <div className={`rounded-lg border border-line bg-surface ${className}`}>{children}</div>
+    <div
+      className={`rounded-[5px] border border-line bg-surface shadow-[0_1px_0_rgba(32,31,27,0.03)] ${className}`}
+    >
+      {children}
+    </div>
   );
 }
 
@@ -43,7 +47,7 @@ const STATE_STYLES: Record<DerivedTaskState, { label: string; className: string 
   overdue: { label: "Overdue", className: "text-alert" },
   open: { label: "Open", className: "text-faint" },
   in_progress: { label: "In progress", className: "text-warn" },
-  complete: { label: "Done", className: "text-accent" },
+  complete: { label: "Done", className: "text-sage" },
 };
 
 /// State reads as a small mono word rather than a coloured pill. A row of
@@ -67,7 +71,7 @@ export function PriorityMark({ priority }: { priority: "LOW" | "MEDIUM" | "HIGH"
 
 export function Empty({ children }: { children: ReactNode }) {
   return (
-    <div className="rounded-lg border border-dashed border-line px-4 py-9 text-center text-[13px] text-faint">
+    <div className="rounded-[5px] border border-dashed border-line px-4 py-9 text-center text-[13px] text-faint">
       {children}
     </div>
   );
@@ -91,8 +95,8 @@ export function Stat({
   const body = (
     <>
       <div
-        className={`display tnum text-[38px] leading-[1.05] ${
-          alarming ? "text-alert" : "text-ink"
+        className={`display tnum text-[40px] leading-[1.05] ${
+          alarming ? "text-alert" : "text-accent"
         }`}
       >
         {value}
@@ -102,7 +106,7 @@ export function Stat({
   );
 
   const className =
-    "block border-t-2 border-ink pt-2.5 transition-colors" +
+    "block border-t border-brass pt-2.5 transition-colors" +
     (alarming ? " border-alert" : "") +
     (href ? " hover:border-accent" : "");
 
@@ -112,5 +116,16 @@ export function Stat({
     </Link>
   ) : (
     <div className={className}>{body}</div>
+  );
+}
+
+/// Closes a page the way a clubhouse card closes a page. Ornament, so it is
+/// used once at the end rather than between every section, where repetition
+/// would make it furniture.
+export function Ornament() {
+  return (
+    <div className="ornament mx-auto mt-12 max-w-xs" aria-hidden>
+      <span />
+    </div>
   );
 }

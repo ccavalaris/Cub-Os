@@ -75,7 +75,7 @@ export default async function TasksPage({
             aria-current={active === f.key ? "page" : undefined}
             className={`rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors ${
               active === f.key
-                ? "border-accent bg-accent text-white"
+                ? "border-accent bg-accent text-ground"
                 : "border-line text-muted hover:border-faint hover:text-ink"
             }`}
           >

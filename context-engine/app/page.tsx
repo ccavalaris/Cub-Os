@@ -4,11 +4,16 @@ import { courseState } from "@/lib/course";
 import { attentionItems, isDueThisWeek, isDueToday, isOpen, isOverdue } from "@/lib/derive";
 import { daysOut, daysOutLabel, formatDate, formatLongDate, isToday, isWithinWeek, today } from "@/lib/dates";
 import { toTaskRow } from "@/lib/rows";
-import { Card, Empty, Section, Stat } from "@/components/ui";
+import { Card, Empty, Ornament, Section, Stat } from "@/components/ui";
 import { TaskRow } from "@/components/task-row";
 import { ContextInbox } from "@/components/context-inbox";
 
 export const dynamic = "force-dynamic";
+
+/// The week's tail is never read on a phone between groups, and a column of
+/// eighteen rows buries the four that are actually due. The rest are one tap
+/// away on the tasks page, which exists to hold all of them.
+const WEEK_TASK_LIMIT = 8;
 
 export default async function CommandCenter() {
   const state = await courseState();
@@ -76,18 +81,18 @@ export default async function CommandCenter() {
                   href={item.href}
                   className="group flex gap-3.5 py-3.5 transition-colors hover:bg-sunken/60"
                 >
+                  {/* Severity rides on the dot alone. Colouring the headline
+                      too painted half this list clay, which reads as "four
+                      things are wrong" when most of them are only soon —
+                      and once everything is alarming, nothing is. */}
                   <span
                     aria-hidden
-                    className={`mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full ${
-                      item.severity === "high" ? "bg-alert" : "bg-warn"
+                    className={`mt-[10px] h-1.5 w-1.5 shrink-0 rounded-full ${
+                      item.severity === "high" ? "bg-alert" : "bg-brass"
                     }`}
                   />
                   <span className="min-w-0">
-                    <span
-                      className={`display block text-[19px] leading-tight ${
-                        item.severity === "high" ? "text-alert" : "text-ink"
-                      }`}
-                    >
+                    <span className="display block text-[19px] leading-tight text-ink">
                       {item.headline}
                     </span>
                     <span className="mt-1 block text-[13.5px] leading-snug text-muted">
@@ -188,16 +193,26 @@ export default async function CommandCenter() {
           {dueThisWeek.length > 0 ? (
             <Card>
               <ul className="divide-y divide-line-soft">
-                {dueThisWeek.map((t) => (
+                {dueThisWeek.slice(0, WEEK_TASK_LIMIT).map((t) => (
                   <TaskRow key={t.id} task={toTaskRow(t)} />
                 ))}
               </ul>
+              {dueThisWeek.length > WEEK_TASK_LIMIT && (
+                <Link
+                  href="/tasks"
+                  className="label block border-t border-line-soft px-3.5 py-2.5 text-muted transition-colors hover:text-accent"
+                >
+                  {dueThisWeek.length - WEEK_TASK_LIMIT} more this week →
+                </Link>
+              )}
             </Card>
           ) : (
             eventsThisWeek.length === 0 && <Empty>Nothing else scheduled this week.</Empty>
           )}
         </div>
       </Section>
+
+      <Ornament />
     </>
   );
 }
